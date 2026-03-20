@@ -1,0 +1,10 @@
+{
+    "timestamp": "2026-03-20 22:09:37.714863",
+    "cpu_usage": 0.5,
+    "ram_usage": {
+        "total": 16406417408,
+        "available": 12183711744,
+        "used": 4222705664,
+        "percent_used": 25.7
+    }
+}
