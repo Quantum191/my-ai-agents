@@ -26,11 +26,10 @@ class CoderAgent:
     def ask_ai(self, prompt, context_override=None, step=1):
         if step > 10:
             self.set_status("Idle")
-            return "Error: Reached 10 step limit without answering."
+            return "Error: Reached 10 step limit."
 
         self.set_status(f"Step {step}/10")
         
-        # Give the AI its memory back!
         history_str = "\n".join(self.task_history) if self.task_history else "No actions taken yet."
         available_files = list_project_files()
         
@@ -39,24 +38,24 @@ class CoderAgent:
             f"GOAL: {prompt}\n"
             f"PAST ACTIONS:\n{history_str}\n"
             f"FILES IN PROJECT:\n{available_files}\n\n"
-            "RULES:\n"
-            "1. You must complete EVERY part of the goal before answering.\n"
-            "2. If the goal requires multiple commands, do them one at a time.\n"
-            "3. Use {\"action\": \"answer\", \"text\": \"...\"} ONLY when the ENTIRE goal is finished.\n\n"
+            "STRICT RULES:\n"
+            "1. You MUST use tools (like 'git', 'read', 'write') to complete the goal BEFORE answering.\n"
+            "2. NEVER use placeholder text. Write a real summary of what you did.\n"
+            "3. If the goal asks for multiple commands (e.g. add THEN commit), do them one by one.\n\n"
             "ACTIONS:\n"
-            "- {\"action\": \"answer\", \"text\": \"final answer\"}\n"
-            "- {\"action\": \"read\", \"filename\": \"...\"}\n"
-            "- {\"action\": \"write\", \"filename\": \"...\", \"code\": \"...\"}\n"
-            "- {\"action\": \"run\", \"filename\": \"...\"}\n"
-            "- {\"action\": \"git\", \"command\": \"git ...\"}\n"
-            "- {\"action\": \"search\", \"query\": \"...\"}"
+            "- {\"action\": \"git\", \"command\": \"git status\"}\n"
+            "- {\"action\": \"read\", \"filename\": \"main.py\"}\n"
+            "- {\"action\": \"write\", \"filename\": \"main.py\", \"code\": \"print('hi')\"}\n"
+            "- {\"action\": \"run\", \"filename\": \"main.py\"}\n"
+            "- {\"action\": \"search\", \"query\": \"weather\"}\n"
+            "- {\"action\": \"answer\", \"text\": \"I have successfully completed...\"}"
         )
         
         ctx = context_override if context_override else "Start the task."
         payload = {
             "model": self.model,
             "prompt": f"{system}\n\nContext: {ctx}\n\nResponse:",
-            "format": "json", "stream": False, "options": {"temperature": 0}
+            "format": "json", "stream": False, "options": {"temperature": 0.1} # Give it a tiny bit of creativity back
         }
 
         try:
@@ -67,7 +66,7 @@ class CoderAgent:
             if action == "answer":
                 self.set_status("Idle")
                 self.task_history = []
-                return data.get("text")
+                return data.get("text", "Task completed.")
                 
             elif action == "read":
                 fn = data.get("filename")
