@@ -9,140 +9,133 @@ from tools.web_search import search_web
 from tools.git_manager import run_git_command, git_sync
 from tools.docker_manager import run_docker_command
 
-# --- Setup Logging ---
-LOG_LEVEL = os.getenv("AGENT_LOG_LEVEL", "INFO").upper()
+# --- Logging Setup ---
 AGENT_LOG_FILE = os.getenv("AGENT_LOG_FILE", "/home/sean/my-ai-agents/memory/agent.log")
-
-logging.basicConfig(
-    filename=AGENT_LOG_FILE,
-    level=getattr(logging, LOG_LEVEL, logging.INFO),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(filename=AGENT_LOG_FILE, level=logging.INFO, 
+                    format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("CoderAgent")
 
 class CoderAgent:
     def __init__(self, name):
         self.name = name
         self.model = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b")
-        self.url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
+        self.url = os.getenv("OLLAMA_CHAT_URL", "http://localhost:11434/api/chat")
         self.status_file = os.getenv("AGENT_STATUS_FILE", "/home/sean/my-ai-agents/memory/status.txt")
-        self.max_steps = int(os.getenv("AGENT_MAX_STEPS", "20"))
+        self.max_steps = 20
         self.memory = AgentMemory()
-        self.set_status("Idle")
 
     def set_status(self, text):
         try:
             with open(self.status_file, "w", encoding='utf-8') as f: 
                 f.write(text)
         except Exception as e:
-            logger.error("Failed to write to status file: %s", e)
+            logger.error(f"Failed to write to status file: {e}")
 
-    def clean_code(self, code_string):
-        """Removes markdown code blocks if the LLM accidentally includes them."""
-        if not code_string: return ""
-        # Removes ```python ... ``` or just ``` ... ```
-        return re.sub(r"```[a-zA-Z]*\n?|```", "", code_string).strip()
+    def extract_json(self, text):
+        if not text:
+            return None
+        try:
+            match = re.search(r'(\{.*\}|\[.*\])', text, re.DOTALL)
+            if match:
+                return json.loads(match.group(1))
+            return json.loads(text)
+        except:
+            return None
 
     def ask_ai(self, prompt):
         step = 1
-        self.task_history = []
-        # We start with the goal as the initial context
-        current_observation = "System initialized. Waiting for first action."
-        
-        while step <= self.max_steps:
-            self.set_status(f"Step {step}/{self.max_steps}")
-            
-            # Build a clear history of what was done
-            history_summary = ""
-            for i, h in enumerate(self.task_history):
-                history_summary += f"\nStep {i+1}: You ran '{h['action']}' on '{h['param']}' -> Result: {h['result'][:100]}"
+        last_obs = "None."
+        action_history = [] 
 
-            files = list_project_files()
+        while step <= self.max_steps:
+            self.set_status(f"Step {step}/{self.max_steps}...")
             
-            system_prompt = (
-                f"You are {self.name}, an expert DevOps agent on Arch Linux. You speak ONLY JSON.\n"
-                f"OBJECTIVE: {prompt}\n"
-                f"FILES IN DIRECTORY: {files}\n"
-                f"COMPLETED WORK: {history_summary if history_summary else 'None'}\n\n"
-                "TOOLS:\n"
-                "- 'write': { \"action\": \"write\", \"filename\": \"<name>\", \"code\": \"<content>\" }\n"
-                "- 'run': { \"action\": \"run\", \"command\": \"<filename_or_cmd>\" }\n"
-                "- 'read', 'search', 'git', 'docker', 'sync'\n"
-                "- 'answer': { \"action\": \"answer\", \"text\": \"<final_summary>\" }\n\n"
+            raw_files = str(list_project_files())
+            safe_files = raw_files[:500] + "...(truncated)" if len(raw_files) > 500 else raw_files
+            recent_history = "\n".join(action_history[-5:]) if action_history else "No actions taken yet."
+
+            # --- FIX: Restored 'command' key and all available tools to the prompt ---
+            system_msg = (
+                f"You are {self.name}. You must output JSON.\n"
+                f"Available tools: write, run, read, git, sync, docker, search, answer.\n"
+                f"Files in directory: {safe_files}\n"
+                "Format: {\"action\": \"tool_name\", \"command\": \"args\", \"filename\": \"name\", \"code\": \"content\", \"text\": \"msg\"}\n\n"
                 "CRITICAL RULES:\n"
-                "1. DO NOT use the example values (like 'test.py'). Use the values requested in the OBJECTIVE.\n"
-                "2. You MUST execute 'write' before you can 'run' a new file.\n"
-                "3. ALWAYS output valid JSON. No conversational filler."
+                "1. DO NOT repeat an action if it was already successful in the history.\n"
+                "2. If the user's task is fully complete based on the LAST OBSERVATION, you MUST use the 'answer' tool to finish."
             )
-            
+
             payload = {
                 "model": self.model,
-                "prompt": f"{system_prompt}\n\nLast Observation: {current_observation}\n\nNext Action (JSON):",
-                "format": "json",
-                "stream": False,
-                "options": {"temperature": 0.0} # Set to 0 for maximum reliability
+                "messages": [
+                    {"role": "system", "content": system_msg},
+                    {"role": "user", "content": f"TASK: {prompt}\n\nHISTORY OF PAST ACTIONS:\n{recent_history}\n\nLAST OBSERVATION: {last_obs}\n\nReply with your next JSON action."}
+                ],
+                "stream": False
             }
 
             try:
                 res = requests.post(self.url, json=payload, timeout=90)
                 res.raise_for_status()
-                data = json.loads(res.json().get("response", "{}"))
                 
-                action = str(data.get("action", "")).lower()
+                raw_content = res.json().get("message", {}).get("content", "")
                 
-                # --- TERMINATION ---
-                if action == "answer":
-                    final_msg = data.get("text") or data.get("command") or "Task complete."
-                    self.set_status("Idle")
-                    return final_msg
+                if not raw_content.strip():
+                    last_obs = "Error: You returned a blank message. Please output a valid JSON object."
+                    action_history.append(f"Step {step}: Error - Blank output")
+                    step += 1
+                    continue
 
-                # --- ROUTING ---
-                result = ""
-                param_label = ""
+                data = self.extract_json(raw_content)
+                if not data:
+                    last_obs = "Error: No JSON found in your response."
+                    action_history.append(f"Step {step}: Error - No JSON parsed")
+                    logger.warning(f"Failed to parse JSON on step {step}. Raw text: {raw_content}")
+                    step += 1
+                    continue
+
+                action = str(data.get("action", "")).lower()
+
+                if action == "answer":
+                    final_text = data.get("text") or "Task completed."
+                    self.set_status("Idle")
+                    logger.info(f"Task completed successfully in {step} steps.")
+                    return final_text
 
                 if action == "write":
-                    filename = data.get("filename")
-                    raw_code = data.get("code") or data.get("command")
-                    clean_code = self.clean_code(raw_code)
-                    result = write_project_file(filename, clean_code)
-                    param_label = filename
-                
+                    code = data.get("code") or data.get("command")
+                    clean_code = re.sub(r"```[a-zA-Z]*\n?|```", "", str(code)).strip()
+                    last_obs = write_project_file(data.get("filename"), clean_code)
                 elif action == "run":
-                    cmd = data.get("command") or data.get("filename")
-                    result = run_project_code(cmd)
-                    param_label = cmd
-                
-                elif action == "read":
-                    fname = data.get("filename") or data.get("command")
-                    result = read_project_file(fname)
-                    param_label = fname
-
-                elif action == "sync":
-                    result = git_sync()
-                    param_label = "GitHub"
-                
-                elif action in ["git", "docker", "search"]:
-                    cmd = data.get("command") or data.get("query")
-                    # Dynamically call based on name match
-                    funcs = {"git": run_git_command, "docker": run_docker_command, "search": search_web}
-                    result = funcs[action](cmd)
-                    param_label = cmd
+                    last_obs = run_project_code(data.get("command") or data.get("filename"))
+                elif action in ["read", "sync", "git", "docker", "search"]:
+                    tool_map = {
+                        "read": read_project_file, 
+                        "sync": git_sync, 
+                        "git": run_git_command, 
+                        "docker": run_docker_command, 
+                        "search": search_web
+                    }
+                    param = data.get("command") or data.get("filename") or data.get("query")
+                    last_obs = tool_map[action](param) if param else tool_map[action]()
                 else:
-                    result = f"Error: '{action}' is not a valid tool name."
-                    param_label = "None"
+                    last_obs = f"Unknown action: {action}"
 
-                # Update state for next loop
-                self.task_history.append({"action": action, "param": param_label, "result": str(result)})
-                current_observation = f"Result of {action}: {result}"
-                logger.info(f"Step {step}: {action} -> {result}")
+                safe_result = str(last_obs)[:100].replace('\n', ' ')
+                action_history.append(f"Step {step}: used '{action}' -> Result: {safe_result}")
+                logger.info(f"Step {step} - Action: {action} - Result: {safe_result}")
 
             except Exception as e:
-                logger.error(f"Error at step {step}: {e}")
-                current_observation = f"System Error: {str(e)}. Correct your JSON format or action."
+                last_obs = f"System Error: {str(e)}"
+                action_history.append(f"Step {step}: CRITICAL ERROR")
+                logger.error(f"Critical loop error on step {step}: {e}")
             
             step += 1
-
+        
         self.set_status("Idle")
-        return f"Error: {self.max_steps} step limit reached."
+        err_msg = f"Error: {self.max_steps} step limit reached."
+        logger.warning(err_msg)
+        return err_msg
 
+# Module interface instantiation
 my_agent = CoderAgent("Dev-01")

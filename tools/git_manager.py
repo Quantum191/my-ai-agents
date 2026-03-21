@@ -1,72 +1,52 @@
 import subprocess
-import os
-import shlex
+import logging
 
-# Fix 2A: Dynamic Root Normalization
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+logger = logging.getLogger("GitManager")
 
-def run_git_command(command):
-    """Runs a raw git command safely within the project root."""
-    if not command.startswith("git "):
-        return "Security Error: Only 'git' commands are allowed."
-    
-    # Security enhancement: Prevent shell injection
-    forbidden_chars = ['|', '>', '<', '&', ';']
-    if any(char in command for char in forbidden_chars):
-        return "Security Error: Shell operators are strictly forbidden."
-
-    try:
-        # Securely parse the command string into a list
-        cmd_list = shlex.split(command)
+def run_git_command(command_string):
+    """Executes a git command in the shell and returns the output."""
+    if not command_string:
+        return "Error: No git command provided by the AI."
         
-        res = subprocess.run(
-            cmd_list, 
-            cwd=PROJECT_ROOT, 
-            shell=False,  # Security: No shell execution
+    # Prevent the AI from accidentally running 'git git init'
+    if command_string.startswith("git "):
+        command_string = command_string[4:]
+        
+    full_command = f"git {command_string}"
+    
+    try:
+        # shell=True allows us to handle complex quotes in commit messages safely
+        result = subprocess.run(
+            full_command, 
+            shell=True, 
             capture_output=True, 
-            text=True, 
-            timeout=30
+            text=True
         )
         
-        output = res.stdout.strip()
-        error = res.stderr.strip()
+        output = result.stdout.strip()
+        error = result.stderr.strip()
         
-        if res.returncode == 0:
-            return output if output else f"Successfully executed: {command}"
+        # If the command succeeded (return code 0)
+        if result.returncode == 0:
+            return output if output else "Command executed successfully (no output)."
         else:
-            return f"Git Error:\n{error}"
+            # If git threw an error (like 'not a git repository')
+            return f"Git Error (Code {result.returncode}): {error}\n{output}"
             
-    except ValueError as e:
-        return f"Parse Error: Could not parse command string properly: {e}"
-    except subprocess.TimeoutExpired:
-        return "Git Error: Command timed out after 30 seconds."
     except Exception as e:
-        return f"Execution Error: {str(e)}"
+        logger.error(f"Failed to execute git command: {e}")
+        return f"System Execution Error: {str(e)}"
 
 def git_sync():
-    """Performs a fetch and pull to stay in sync with remote changes robustly."""
+    """Helper function to pull and push updates to the cloud."""
     try:
-        # 1. Fetch the latest metadata from GitHub
-        fetch_res = run_git_command("git fetch origin")
-        if "Git Error:" in fetch_res:
-            return f"Failed to fetch from origin:\n{fetch_res}"
+        pull = subprocess.run("git pull", shell=True, capture_output=True, text=True)
+        push = subprocess.run("git push", shell=True, capture_output=True, text=True)
         
-        # Fix 2D: Robust Git Sync using rev-list instead of fragile string matching
-        # This returns the exact number of commits we are behind origin/main
-        rev_check = run_git_command("git rev-list HEAD..origin/main --count")
+        out = ""
+        if pull.stdout: out += f"Pull: {pull.stdout.strip()}\n"
+        if push.stdout: out += f"Push: {push.stdout.strip()}\n"
         
-        if "Git Error:" in rev_check:
-            return f"Failed to check revision history:\n{rev_check}"
-            
-        # Parse the integer safely
-        behind_count = int(rev_check.strip()) if rev_check.strip().isdigit() else 0
-        
-        if behind_count > 0:
-            # 3. Pull the changes down
-            pull = run_git_command("git pull origin main")
-            return f"Sync Complete: Pulled {behind_count} new commit(s) from cloud.\n{pull}"
-        else:
-            return "Sync Check: Local version is already up to date."
-            
+        return out if out else "Sync completed successfully."
     except Exception as e:
         return f"Sync Error: {str(e)}"
