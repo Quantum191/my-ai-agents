@@ -1,36 +1,23 @@
 import os
-import sys
+from contextlib import redirect_stderr
+from duckduckgo_search import DDGS
 
-# Muzzle any remaining warnings just in case
-stderr = sys.stderr
-sys.stderr = open(os.devnull, 'w')
-
-try:
-    # WE USE THE NEW LIBRARY NAME HERE!
-    from ddgs import DDGS
-finally:
-    sys.stderr = stderr
-
-def search_web(query, max_results=3):
-    """Clean search using the newly installed ddgs library."""
+def search_web(query):
+    """Searches the web using DuckDuckGo, safely muffling library-level stderr."""
     try:
-        with DDGS() as ddgs:
-            results = [r for r in ddgs.text(query, max_results=max_results)]
+        # Antigravity Fix: Use a context manager to redirect stderr to /dev/null
+        # This only 'hides' errors during the search itself, keeping your CLI clean.
+        with open(os.devnull, 'w') as f, redirect_stderr(f):
+            results = DDGS().text(query, max_results=3)
             
         if not results:
-            return "No search results found."
-        
-        output = []
-        for res in results:
-            title = res.get('title', 'N/A')
-            body = res.get('body', 'N/A')
-            output.append(f"TITLE: {title}\nINFO: {body}\n")
+            return "No results found."
             
-        return "\n".join(output)
-    
+        summary = "\n".join([f"- {r['title']}: {r['href']}" for r in results])
+        return summary
     except Exception as e:
-        return f"Search failed: {str(e)}"
+        return f"Search Error: {str(e)}"
 
 if __name__ == "__main__":
-    # Test print
-    print(search_web("Tokyo Weather"))
+    # Quick local test
+    print(search_web("Arch Linux news"))

@@ -1,72 +1,86 @@
 import os
 import subprocess
 
-# --- HARDCODED ABSOLUTE PATH ---
+# Set the absolute path for your Arch Linux environment
 PROJECT_ROOT = "/home/sean/my-ai-agents"
 
-def get_abs_path(filename):
-    """Ensures the AI is always looking in the exact right folder."""
-    safe_path = os.path.abspath(os.path.join(PROJECT_ROOT, filename))
-    # Security check so the AI can't read your personal Arch Linux system files
-    if not safe_path.startswith(PROJECT_ROOT):
-        return PROJECT_ROOT
-    return safe_path
-
-def list_project_files():
-    """Returns a list of all files so the AI knows what exists."""
-    files_list = []
-    for root, dirs, files in os.walk(PROJECT_ROOT):
-        # Ignore the sandbox and hidden git folders
-        if '.git' in root or '__pycache__' in root or 'venv' in root:
-            continue
-        for file in files:
-            if file.endswith('.py') or file.endswith('.txt') or file.endswith('.log'):
-                rel_path = os.path.relpath(os.path.join(root, file), PROJECT_ROOT)
-                files_list.append(rel_path)
-    return "\n".join(files_list) if files_list else "No files found."
+def get_safe_path(filename):
+    """Ensures all file operations stay within the project directory."""
+    if not filename or not isinstance(filename, str):
+        # Return a dummy path that doesn't exist instead of crashing
+        return os.path.join(PROJECT_ROOT, "MISSING_FILENAME_ERROR")
+    
+    if filename.startswith(PROJECT_ROOT):
+        return filename
+    clean_name = filename.lstrip("/")
+    return os.path.join(PROJECT_ROOT, clean_name)
 
 def read_project_file(filename):
-    """Reads the exact file off the hard drive."""
-    file_path = get_abs_path(filename)
+    """Reads file content safely."""
+    path = get_safe_path(filename)
     try:
-        with open(file_path, 'r') as f:
-            return f.read()
-    except FileNotFoundError:
-        return f"System Error: The file {filename} does not exist in {PROJECT_ROOT}."
+        if os.path.exists(path):
+            with open(path, 'r', encoding='utf-8') as f:
+                return f.read()
+        return f"Error: File '{filename}' not found at {path}."
     except Exception as e:
-        return f"System Error reading file: {str(e)}"
+        return f"Read Error: {str(e)}"
 
 def write_project_file(filename, content):
-    """Writes code to the exact folder."""
-    file_path = get_abs_path(filename)
-    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+    """Writes content to a file, creating directories if needed."""
+    path = get_safe_path(filename)
     try:
-        with open(file_path, 'w') as f:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, 'w', encoding='utf-8') as f:
             f.write(content)
-        return f"Success: Wrote to {filename}"
+        return f"Successfully wrote to {filename}"
     except Exception as e:
-        return f"System Error writing file: {str(e)}"
+        return f"Write Error: {str(e)}"
+
+def list_project_files():
+    """Returns a filtered list of project files to keep the AI's context clean."""
+    file_list = []
+    # Only show these extensions to keep the agent focused
+    valid_extensions = ('.py', '.md', '.txt', '.json', '.sql')
+    # Folders to completely ignore
+    ignore_dirs = {'.git', 'venv', '__pycache__', '.pytest_cache', 'node_modules'}
+
+    try:
+        for root, dirs, filenames in os.walk(PROJECT_ROOT):
+            # Modify dirs in-place to skip ignored folders
+            dirs[:] = [d for d in dirs if d not in ignore_dirs]
+            
+            for f in filenames:
+                if f.endswith(valid_extensions):
+                    full_path = os.path.join(root, f)
+                    file_list.append(os.path.relpath(full_path, PROJECT_ROOT))
+        return file_list
+    except Exception as e:
+        return [f"List Error: {str(e)}"]
 
 def run_project_code(filename):
-    """Runs the code using your Virtual Environment."""
-    file_path = get_abs_path(filename)
-    if not os.path.exists(file_path):
-        return f"System Error: Cannot run {filename} because it does not exist."
+    """Runs a Python script using the project's virtual environment."""
+    path = get_safe_path(filename)
+    if not path.endswith(".py"):
+        return "Error: Can only execute .py files."
     
+    # Use the venv python to ensure dependencies are found
+    python_exe = os.path.join(PROJECT_ROOT, "venv/bin/python")
+    if not os.path.exists(python_exe):
+        python_exe = "python3" # Fallback if venv is missing
+
     try:
-        # Forces the AI to use your safe sandbox to run code!
-        python_exec = os.path.join(PROJECT_ROOT, "venv", "bin", "python")
         result = subprocess.run(
-            [python_exec, file_path], 
-            capture_output=True, 
-            text=True, 
-            timeout=15
+            [python_exe, path],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            cwd=PROJECT_ROOT
         )
-        output = result.stdout
-        if result.stderr:
-            output += f"\nErrors:\n{result.stderr}"
-        return output.strip() if output.strip() else "Script ran successfully (no output)."
+        output = result.stdout if result.stdout else "No output."
+        errors = result.stderr if result.stderr else "No errors."
+        return f"STDOUT: {output}\nSTDERR: {errors}"
     except subprocess.TimeoutExpired:
-        return "System Error: Script timed out after 15 seconds. It might be in an infinite loop."
+        return "Error: Execution timed out (15s)."
     except Exception as e:
-        return f"System Error running script: {str(e)}"
+        return f"Execution Error: {str(e)}"

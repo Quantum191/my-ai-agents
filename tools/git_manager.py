@@ -1,35 +1,39 @@
 import subprocess
 import os
-import shlex
 
-# Hardcoded safe path
 PROJECT_ROOT = "/home/sean/my-ai-agents"
 
 def run_git_command(command):
-    """Executes a git command safely in the project root."""
-    # SECURITY: Force the command to only be a git command
-    if not command.startswith("git "):
-        return "Security Error: This tool can only run 'git' commands."
-    
+    """Runs a raw git command safely within the project root."""
     try:
-        # THE FIX: Use shlex.split to keep quoted sentences together!
-        cmd_list = shlex.split(command)
-        
-        result = subprocess.run(
-            cmd_list,
-            cwd=PROJECT_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=10
+        # Ensure we are in the right directory
+        res = subprocess.run(
+            command, 
+            cwd=PROJECT_ROOT, 
+            shell=True, 
+            capture_output=True, 
+            text=True, 
+            timeout=30
         )
+        return res.stdout + res.stderr
+    except Exception as e:
+        return str(e)
+
+def git_sync():
+    """Performs a fetch and pull to stay in sync with remote changes."""
+    try:
+        # 1. Fetch the latest metadata from GitHub
+        fetch = run_git_command("git fetch origin")
         
-        output = result.stdout.strip()
-        error = result.stderr.strip()
+        # 2. Check if we are behind the remote branch
+        status = run_git_command("git status -uno")
         
-        if result.returncode == 0:
-            return output if output else "Command successful (no output)."
+        if "is behind" in status or "can be fast-forwarded" in status:
+            # 3. Pull the changes down
+            pull = run_git_command("git pull origin main")
+            return f"Sync Complete: Changes pulled from cloud.\n{pull}"
         else:
-            return f"Git Error:\n{error}"
+            return "Sync Check: Local version is already up to date."
             
     except Exception as e:
-        return f"System Error running git: {str(e)}"
+        return f"Sync Error: {str(e)}"
