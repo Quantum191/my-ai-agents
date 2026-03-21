@@ -70,20 +70,17 @@ class CoderAgent:
             
             # IMPROVED: Explicitly list 'answer' as a tool and clarify its use
             system = (
-                f"You are {self.name}, a JSON-only DevOps agent on Arch Linux.\n"
+                f"You are {self.name}, a DevOps automation specialist on Arch Linux.\n"
                 f"GOAL: {prompt}\n"
-                f"PAST HISTORY:\n{history_text}\n"
-                f"CURRENT FILES: {files}\n\n"
+                f"FILES: {files}\n\n"
+                "CRITICAL INSTRUCTIONS:\n"
+                "1. You MUST execute all steps requested by the user. Do not skip to the end.\n"
+                "2. If the user asks to write and run a file, you must use 'write', then 'run', THEN 'answer'.\n"
+                "3. Use 'answer' ONLY when the task is fully complete and you have the final output to report.\n\n"
                 "AVAILABLE TOOLS:\n"
-                "- 'sync': Pulls latest updates from the cloud.\n"
-                "- 'git': Runs standard git commands.\n"
-                "- 'docker', 'read', 'write', 'run', 'search'.\n"
-                "- 'answer': USE THIS TOOL TO FINISH THE TASK. Provide your final response in the 'text' field.\n\n"
-                "RULES:\n"
-                "1. Always return ONLY valid JSON.\n"
-                "2. If you have the information requested, use the 'answer' action immediately.\n\n"
-                "JSON SCHEMA:\n"
-                "{\"action\": \"tool_name\", \"command\": \"args\", \"filename\": \"name\", \"code\": \"content\", \"text\": \"final_msg\"}"
+                "- 'sync', 'git', 'docker', 'read', 'write', 'run', 'search'.\n"
+                "- 'answer': Use this ONLY to deliver the final result of the work performed.\n\n"
+                "FORMAT: You must return ONLY valid JSON."
             )
             
             payload = {
