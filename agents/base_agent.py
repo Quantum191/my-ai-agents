@@ -75,7 +75,8 @@ class CoderAgent:
                 "- 'sync': Checks for and pulls updates from GitHub (Antigravity cloud).\n"
                 "- 'git': Runs standard git commands (commit, push, etc.).\n"
                 "- 'docker', 'read', 'write', 'run', 'search'.\n"
-                "RULES: Always sync before starting work if the user mentions cloud updates."
+                "RULES: Always sync before starting work if the user mentions cloud updates.\n"
+                "FORMAT: You MUST return ONLY valid JSON using this exact schema: {\"action\": \"<tool_name_or_answer>\", \"command\": \"<tool_args>\", \"filename\": \"<optional_file>\", \"text\": \"<message_to_user>\"}"
             )
             
             payload = {
@@ -122,7 +123,7 @@ class CoderAgent:
                 else:
                     out = f"Error: Unknown action '{action}' requested by AI."
                     param_log = "Unknown"
-                    logger.warning(out)
+                    logger.warning(out + f" Full LLM JSON data: {data}")
 
                 # Record history cleanly
                 self.task_history.append({"action": action, "parameter": param_log, "result": str(out)})
