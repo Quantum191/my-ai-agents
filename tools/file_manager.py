@@ -1,8 +1,14 @@
 import os
+import sys
 import subprocess
+from pathlib import Path
 
-# Set the absolute path for your Arch Linux environment
-PROJECT_ROOT = "/home/sean/my-ai-agents"
+# Fix 2A: Dynamic Root Normalization
+# Assuming this file is in tools/, the project root is one directory up
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+# Use env variables for external dependencies to keep it portable
+ANTIGRAVITY_PATH = os.getenv("ANTIGRAVITY_PATH", os.path.expanduser("~/.gemini/antigravity"))
 
 def get_safe_path(filename):
     """Ensures all file operations stay within the project directory."""
@@ -10,8 +16,10 @@ def get_safe_path(filename):
         # Return a dummy path that doesn't exist instead of crashing
         return os.path.join(PROJECT_ROOT, "MISSING_FILENAME_ERROR")
     
-    if filename.startswith(PROJECT_ROOT):
+    # Allow DEV-01 to read plans from Antigravity memory dynamically
+    if filename.startswith(PROJECT_ROOT) or filename.startswith(ANTIGRAVITY_PATH):
         return filename
+        
     clean_name = filename.lstrip("/")
     return os.path.join(PROJECT_ROOT, clean_name)
 
@@ -39,21 +47,23 @@ def write_project_file(filename, content):
 
 def list_project_files():
     """Returns a filtered list of project files to keep the AI's context clean."""
-    file_list = []
-    # Only show these extensions to keep the agent focused
-    valid_extensions = ('.py', '.md', '.txt', '.json', '.sql')
-    # Folders to completely ignore
-    ignore_dirs = {'.git', 'venv', '__pycache__', '.pytest_cache', 'node_modules'}
-
     try:
-        for root, dirs, filenames in os.walk(PROJECT_ROOT):
-            # Modify dirs in-place to skip ignored folders
-            dirs[:] = [d for d in dirs if d not in ignore_dirs]
-            
-            for f in filenames:
-                if f.endswith(valid_extensions):
-                    full_path = os.path.join(root, f)
-                    file_list.append(os.path.relpath(full_path, PROJECT_ROOT))
+        root_path = Path(PROJECT_ROOT)
+        valid_extensions = {'.py', '.md', '.txt', '.json', '.sql'}
+        ignore_dirs = {'.git', 'venv', '__pycache__', '.pytest_cache', 'node_modules'}
+        
+        file_list = []
+        
+        # Fix 2B: Using Pathlib.rglob for robust file discovery
+        for file_path in root_path.rglob('*'):
+            # Skip if any part of the file's path contains an ignored directory
+            if any(ignored in file_path.parts for ignored in ignore_dirs):
+                continue
+                
+            if file_path.is_file() and file_path.suffix in valid_extensions:
+                # Store the relative path to keep the context short for the LLM
+                file_list.append(str(file_path.relative_to(root_path)))
+                
         return file_list
     except Exception as e:
         return [f"List Error: {str(e)}"]
@@ -64,10 +74,8 @@ def run_project_code(filename):
     if not path.endswith(".py"):
         return "Error: Can only execute .py files."
     
-    # Use the venv python to ensure dependencies are found
-    python_exe = os.path.join(PROJECT_ROOT, "venv/bin/python")
-    if not os.path.exists(python_exe):
-        python_exe = "python3" # Fallback if venv is missing
+    # Fix 2B: Use sys.executable to run code with the exact same binary that launched the agent
+    python_exe = sys.executable
 
     try:
         result = subprocess.run(
