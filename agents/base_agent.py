@@ -5,6 +5,7 @@ from memory.memory_manager import AgentMemory
 from tools.file_manager import read_project_file, list_project_files, write_project_file, run_project_code
 from tools.web_search import search_web
 from tools.git_manager import run_git_command
+from tools.docker_manager import run_docker_command
 
 class CoderAgent:
     def __init__(self, name, model="qwen2.5-coder:7b"):
@@ -34,28 +35,31 @@ class CoderAgent:
         available_files = list_project_files()
         
         system = (
-            "You are an autonomous AI coding agent. Use JSON format only.\n"
+            "You are an elite AI DevOps and Systems Engineer. Use JSON format only.\n"
             f"GOAL: {prompt}\n"
             f"PAST ACTIONS:\n{history_str}\n"
             f"FILES IN PROJECT:\n{available_files}\n\n"
             "STRICT RULES:\n"
-            "1. You MUST use tools (like 'git', 'read', 'write') to complete the goal BEFORE answering.\n"
-            "2. NEVER use placeholder text. Write a real summary of what you did.\n"
-            "3. If the goal asks for multiple commands (e.g. add THEN commit), do them one by one.\n\n"
+            "1. You MUST use tools to complete the goal BEFORE answering.\n"
+            "2. If spinning up Docker containers, run them in detached mode (-d).\n"
+            "3. You can execute code INSIDE a running container using 'docker exec'.\n"
+            "4. CRITICAL: NEVER use '-it' with docker exec, as it will freeze the system waiting for terminal input. Use standard 'docker exec <container> <cmd>'.\n\n"
             "ACTIONS:\n"
-            "- {\"action\": \"git\", \"command\": \"git status\"}\n"
-            "- {\"action\": \"read\", \"filename\": \"main.py\"}\n"
-            "- {\"action\": \"write\", \"filename\": \"main.py\", \"code\": \"print('hi')\"}\n"
-            "- {\"action\": \"run\", \"filename\": \"main.py\"}\n"
-            "- {\"action\": \"search\", \"query\": \"weather\"}\n"
-            "- {\"action\": \"answer\", \"text\": \"I have successfully completed...\"}"
+            "- {\"action\": \"docker\", \"command\": \"docker run -d ...\"}\n"
+            "- {\"action\": \"docker\", \"command\": \"docker exec ai-web-server sh -c 'echo \\\"Hello\\\" > /usr/share/nginx/html/index.html'\"}\n"
+            "- {\"action\": \"git\", \"command\": \"git ...\"}\n"
+            "- {\"action\": \"read\", \"filename\": \"...\"}\n"
+            "- {\"action\": \"write\", \"filename\": \"...\", \"code\": \"...\"}\n"
+            "- {\"action\": \"run\", \"filename\": \"...\"}\n"
+            "- {\"action\": \"search\", \"query\": \"...\"}\n"
+            "- {\"action\": \"answer\", \"text\": \"Final summary...\"}"
         )
         
         ctx = context_override if context_override else "Start the task."
         payload = {
             "model": self.model,
             "prompt": f"{system}\n\nContext: {ctx}\n\nResponse:",
-            "format": "json", "stream": False, "options": {"temperature": 0.1} # Give it a tiny bit of creativity back
+            "format": "json", "stream": False, "options": {"temperature": 0.1}
         }
 
         try:
@@ -65,9 +69,21 @@ class CoderAgent:
             
             if action == "answer":
                 self.set_status("Idle")
-                self.task_history = []
-                return data.get("text", "Task completed.")
+                final_answer = data.get("text", "Task completed.")
                 
+                # ---> THE MISSING LINK <---
+                self.memory.save_interaction(prompt, final_answer) 
+                
+                self.task_history = []
+                return final_answer
+                
+            elif action == "docker":
+                cmd = data.get("command")
+                self.set_status(f"Running {cmd}...")
+                output = run_docker_command(cmd)
+                self.task_history.append(f"Ran {cmd}")
+                return self.ask_ai(prompt, context_override=f"DOCKER OUTPUT FOR {cmd}:\n{output}", step=step+1)
+
             elif action == "read":
                 fn = data.get("filename")
                 self.set_status(f"Reading {fn}...")
