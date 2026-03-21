@@ -1,7 +1,6 @@
 import requests
 import os
 import json
-import re
 import logging
 from memory.memory_manager import AgentMemory
 from tools.file_manager import read_project_file, list_project_files, write_project_file, run_project_code
@@ -9,20 +8,27 @@ from tools.web_search import search_web
 from tools.git_manager import run_git_command, git_sync
 from tools.docker_manager import run_docker_command
 
-# Setup logging to a file so we don't lose track of errors
+# Setup basic logging
+LOG_LEVEL = os.getenv("AGENT_LOG_LEVEL", "INFO").upper()
+# Set up a central agent log file
+AGENT_LOG_FILE = os.getenv("AGENT_LOG_FILE", "/home/sean/my-ai-agents/memory/agent.log")
+
 logging.basicConfig(
-    filename='agent_debug.log',
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    filename=AGENT_LOG_FILE,
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
+logger = logging.getLogger("CoderAgent")
 
 class CoderAgent:
-    def __init__(self, name, model=None):
+    def __init__(self, name):
         self.name = name
-        # Extract hardcoded config to Environment Variables (Antigravity's suggestion)
-        self.model = model or os.getenv("AGENT_MODEL", "qwen2.5-coder:7b")
+        
+        # Section 1B: Extract Hardcoded Configuration
+        self.model = os.getenv("OLLAMA_MODEL", "qwen2.5-coder:7b")
         self.url = os.getenv("OLLAMA_URL", "http://localhost:11434/api/generate")
-        self.status_file = os.getenv("STATUS_FILE", "/home/sean/my-ai-agents/memory/status.txt")
+        self.status_file = os.getenv("AGENT_STATUS_FILE", "/home/sean/my-ai-agents/memory/status.txt")
+        self.max_steps = int(os.getenv("AGENT_MAX_STEPS", "20"))
         
         self.memory = AgentMemory()
         self.task_history = []
@@ -30,89 +36,118 @@ class CoderAgent:
 
     def set_status(self, text):
         try:
-            with open(self.status_file, "w") as f:
+            with open(self.status_file, "w", encoding='utf-8') as f: 
                 f.write(text)
         except Exception as e:
-            logging.error(f"Failed to write status: {e}")
+            logger.error("Failed to write to status file: %s", e)
 
-    def extract_json(self, text):
-        try:
-            match = re.search(r'\{.*\}', text, re.DOTALL)
-            return json.loads(match.group()) if match else None
-        except Exception as e:
-            logging.error(f"JSON Parsing Error: {e} | Raw text: {text[:100]}")
-            return None
-
-    def ask_ai(self, user_goal):
-        """Now using an Iterative Loop instead of Recursion."""
+    def ask_ai(self, prompt):
+        # Section 1A: Remove Deep Recursion
+        # Replaced the recursive `return self.ask_ai(...)` calls with a proper while loop.
         step = 1
-        max_steps = 20
-        context_override = "Begin."
+        current_context = "Start"
+        self.task_history = []
         
-        while step <= max_steps:
-            self.set_status(f"Step {step}/{max_steps}")
+        cmd_map = {
+            "docker": run_docker_command, 
+            "git": run_git_command, 
+            "read": read_project_file, 
+            "write": lambda f, c: write_project_file(f, c), 
+            "run": run_project_code, 
+            "search": search_web
+        }
+        
+        while step <= self.max_steps:
+            self.set_status(f"Step {step}/{self.max_steps}")
+            logger.info("Executing step %d/%d for objective.", step, self.max_steps)
             
-            history = "\n".join(self.task_history[-3:]) if self.task_history else "None"
+            # Format history robustly to prevent prompt context bloat
+            history_text = "\n".join(
+                [f"Step {i+1}: Action='{h['action']}', Target='{h['parameter']}'" for i, h in enumerate(self.task_history)]
+            ) if self.task_history else "None"
+            
             files = list_project_files()
             
-            system_instructions = (
-                f"You are {self.name}, a JSON-ONLY Arch Linux Engineer.\n"
-                f"FILES: {files}\n"
-                f"HISTORY: {history}\n\n"
-                "RESPONSE: ONLY JSON. NO CHAT.\n"
-                "{'action': 'read'|'write'|'answer'|'sync'|'run'|'git'|'docker'|'search', ...}"
+            system = (
+                "You are Dev-01, a JSON-only DevOps agent on Arch Linux.\n"
+                f"GOAL: {prompt}\nPAST: {history_text}\nFILES: {files}\n"
+                "TOOLS:\n"
+                "- 'sync': Checks for and pulls updates from GitHub (Antigravity cloud).\n"
+                "- 'git': Runs standard git commands (commit, push, etc.).\n"
+                "- 'docker', 'read', 'write', 'run', 'search'.\n"
+                "RULES: Always sync before starting work if the user mentions cloud updates."
             )
             
             payload = {
                 "model": self.model,
-                "prompt": f"{system_instructions}\n\nGOAL: {user_goal}\n\nDATA: {context_override}\n\nResponse:",
-                "format": "json",
-                "stream": False,
-                "options": {"temperature": 0.1, "stop": ["Goal:", "Data:"]}
+                "prompt": f"{system}\n\nContext: {current_context}\n\nResponse:",
+                "format": "json", 
+                "stream": False, 
+                "options": {"temperature": 0.1}
             }
 
             try:
-                response = requests.post(self.url, json=payload, timeout=60).json()
-                raw_text = response.get("response", "")
-                data = self.extract_json(raw_text)
-
-                if not data:
-                    context_override = "System: Invalid JSON. Use {'action': 'answer', 'text': '...'}"
-                    step += 1
-                    continue
-
+                res = requests.post(self.url, json=payload, timeout=90)
+                res.raise_for_status() # Raise warning on bad HTTP codes
+                
+                res_data = res.json()
+                data = json.loads(res_data.get("response", "{}"))
                 action = data.get("action")
                 
-                # BREAK CONDITION: The agent provides the final answer
                 if action == "answer":
-                    final_text = data.get("text", "Done.")
-                    self.memory.save_interaction(user_goal, final_text)
+                    text = data.get("text", "Done.")
+                    self.memory.save_interaction(prompt, text)
                     self.set_status("Idle")
-                    return final_text
+                    return text
                 
-                # TOOL EXECUTION
-                logging.info(f"Step {step}: Executing {action}")
-                if action == "read": res = read_project_file(data.get("filename"))
-                elif action == "write": res = write_project_file(data.get("filename"), data.get("code"))
-                elif action == "run": res = run_project_code(data.get("filename"))
-                elif action == "git": res = run_git_command(data.get("command"))
-                elif action == "docker": res = run_docker_command(data.get("command"))
-                elif action == "sync": res = git_sync()
-                elif action == "search": res = search_web(data.get("query"))
-                else: res = f"Unknown action: {action}"
+                # Action Routing
+                out = ""
+                param_log = ""
+                
+                if action == "sync":
+                    self.set_status("Syncing with Cloud...")
+                    out = git_sync()
+                    param_log = "GitHub Push/Pull"
+                    
+                elif action in cmd_map:
+                    param = data.get("command") or data.get("filename") or data.get("query")
+                    self.set_status(f"Running {action}...")
+                    
+                    if action == "write":
+                        out = cmd_map[action](data.get("filename"), data.get("code"))
+                        param_log = data.get("filename", "unknown_file")
+                    else:
+                        out = cmd_map[action](param)
+                        param_log = str(param)
+                else:
+                    out = f"Error: Unknown action '{action}' requested by AI."
+                    param_log = "Unknown"
+                    logger.warning(out)
 
-                self.task_history.append(f"Step {step}: {action}")
-                context_override = f"Result: {res}"
-                step += 1
-
+                # Record history cleanly
+                self.task_history.append({"action": action, "parameter": param_log, "result": str(out)})
+                
+                # Keep current context strictly to the immediate last output so the LLM context size doesn't explode
+                current_context = f"Result of {action}: {out}"
+                
             except requests.exceptions.RequestException as e:
-                logging.error(f"Network Error: {e}")
-                return f"Error: Ollama connection failed. Check if it's running."
+                # Improved Section 1C: Specific Catching and logging
+                logger.error("Network or API Error with Ollama: %s", e)
+                current_context = f"Error communicating with local LLM Backend: {str(e)}"
+            except json.JSONDecodeError as e:
+                logger.error("JSON Parsing Error from LLM Output: %s", e)
+                current_context = "Error: Invalid JSON format returned. You must return strictly valid JSON."
             except Exception as e:
-                logging.error(f"Critical Loop Error: {e}")
-                return f"Crash: {str(e)}"
-
+                # Catch-all backup
+                logger.exception("Catastrophic error during the agent execution loop.")
+                current_context = f"System Architecture Error: {str(e)}"
+                
+            step += 1
+            
         self.set_status("Idle")
-        return "Error: 20 step limit reached."
+        err_msg = f"Error: {self.max_steps} step limit reached before reaching an 'answer' state."
+        logger.error(err_msg)
+        return err_msg
 
+# Module interface instantiation
 my_agent = CoderAgent("Dev-01")
