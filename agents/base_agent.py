@@ -7,7 +7,9 @@ from datetime import datetime
 from memory.memory_manager import AgentMemory
 from tools.file_manager import read_project_file, list_project_files, write_project_file, run_project_code, make_directory
 from tools.git_manager import run_git_command
+from tools.bash_manager import run_bash_command
 
+# --- 1. LOGGING SETUP ---
 LOG_PATH = "/home/sean/my-ai-agents/memory/agent.log"
 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
@@ -28,7 +30,7 @@ class CoderAgent:
         self.status_path = "/home/sean/my-ai-agents/memory/status.txt"
         self.memory = AgentMemory()
         self.http_session = requests.Session()
-        self.abort_signal = False # NEW: The Kill Switch Flag
+        self.abort_signal = False 
 
     def set_status(self, text):
         try:
@@ -48,13 +50,12 @@ class CoderAgent:
         step = 1
         last_obs = "None."
         action_history = [] 
-        self.abort_signal = False # Reset the flag on every new task
+        self.abort_signal = False 
         
         self.set_status("Step 1/15: Thinking...")
         logger.info(f"--- NEW TASK RECEIVED: {prompt} ---")
         
         while step <= 15:
-            # NEW: Check if the user hit the ABORT button
             if self.abort_signal:
                 logger.info("🛑 MISSION ABORTED BY SYSTEM OVERRIDE.")
                 self.set_status("Idle")
@@ -72,14 +73,14 @@ class CoderAgent:
                 "1. mkdir: {\"action\": \"mkdir\", \"filename\": \"folder_name\"}\n"
                 "2. write: {\"action\": \"write\", \"filename\": \"path/to/file.ext\", \"code\": \"file content\"}\n"
                 "3. read:  {\"action\": \"read\", \"filename\": \"path/to/file.ext\"}\n"
-                "4. run:   {\"action\": \"run\", \"command\": \"command to run\"}\n"
+                "4. run:   {\"action\": \"run\", \"filename\": \"script.py\"} <-- ONLY for running .py files.\n"
                 "5. git:   {\"action\": \"git\", \"command\": \"status\"}\n"
-                "6. answer:{\"action\": \"answer\", \"text\": \"Task completed successfully.\"}\n\n"
+                "6. bash:  {\"action\": \"bash\", \"command\": \"any_terminal_command\"} <-- Use this for ls, npm, pip, etc.\n"
+                "7. answer:{\"action\": \"answer\", \"text\": \"Final summary.\"}\n\n"
                 "--- CRITICAL RULES ---\n"
-                "- Review the 'ACTION HISTORY' to see what you have already done.\n"
-                "- To put a file inside a folder, use the format 'folder_name/file_name.ext'.\n"
-                "- WHEN YOU HAVE FINISHED THE REQUESTED TASK, YOU MUST USE THE 'answer' TOOL TO STOP.\n"
-                "- Output ONLY ONE action per step."
+                "- Use 'bash' for ALL terminal commands (ls, mkdir -p, rm, etc.).\n"
+                "- ONLY use 'run' if you specifically want to execute a Python script.\n"
+                "- WHEN FINISHED, USE THE 'answer' TOOL."
             )
 
             try:
@@ -94,8 +95,8 @@ class CoderAgent:
                 
                 data = self.extract_json(res.json().get("message", {}).get("content", ""))
                 if not data:
-                    logger.info(f"Step {step}: Error - AI failed to return valid JSON.")
-                    last_obs = "Error: Invalid JSON format. Output valid JSON only."
+                    logger.info(f"Step {step}: Error - Invalid JSON.")
+                    last_obs = "Error: Invalid JSON. Use tool formats exactly."
                     step += 1
                     continue
 
@@ -107,16 +108,23 @@ class CoderAgent:
                     final_text = data.get("text", "Done.")
                     self.memory.save_interaction(prompt, final_text)
                     self.set_status("Idle")
-                    logger.info(f"TASK COMPLETE: {final_text}")
                     return final_text
 
                 # Tool Routing
-                if action == "mkdir": last_obs = make_directory(data.get("filename") or data.get("command"))
-                elif action == "write": last_obs = write_project_file(data.get("filename"), data.get("code", ""))
-                elif action == "git": last_obs = run_git_command(data.get("command"))
-                elif action == "run": last_obs = run_project_code(data.get("filename") or data.get("command"))
-                elif action == "read": last_obs = read_project_file(data.get("filename"))
-                else: last_obs = f"Unknown tool: {action}"
+                if action == "mkdir": 
+                    last_obs = make_directory(data.get("filename") or data.get("command"))
+                elif action == "write": 
+                    last_obs = write_project_file(data.get("filename"), data.get("code", ""))
+                elif action == "git": 
+                    last_obs = run_git_command(data.get("command"))
+                elif action == "run": 
+                    last_obs = run_project_code(data.get("filename") or data.get("command"))
+                elif action == "read": 
+                    last_obs = read_project_file(data.get("filename"))
+                elif action == "bash": 
+                    last_obs = run_bash_command(data.get("command"))
+                else: 
+                    last_obs = f"Unknown tool: {action}"
                 
                 logger.info(f"Step {step} Result: {str(last_obs)[:100]}")
                 action_history.append(f"Used '{action}' -> Result: {str(last_obs)[:100]}")
@@ -128,7 +136,6 @@ class CoderAgent:
             step += 1
         
         self.set_status("Idle")
-        logger.info("TASK FAILED: Step limit reached.")
-        return "Task limit reached. The agent got stuck and timed out."
+        return "Task limit reached."
 
 my_agent = CoderAgent("Dev-01")

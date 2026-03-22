@@ -42,10 +42,10 @@ header h1 {
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
-/* Hardware Grid */
+/* Hardware Grid - OPTIMIZED for 6 cards (3 columns, 2 rows) */
 #system-status {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 15px;
   width: 100%;
   max-width: 800px;
@@ -64,14 +64,6 @@ header h1 {
   color: #777;
   margin-bottom: 8px;
   position: relative;
-}
-
-/* NEW: Temperature Text Styling */
-.temp-display {
-  float: right;
-  color: #fff;
-  font-weight: bold;
-  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
 }
 
 .bar {
@@ -103,6 +95,17 @@ header h1 {
 
 .storage .fill {
   background: #ff9900;
+}
+
+/* NEW: Thermal Bar Colors */
+.cpu-temp .fill {
+  background: #ff3333;
+  box-shadow: 0 0 8px #ff3333;
+}
+
+.gpu-temp .fill {
+  background: #ff3333;
+  box-shadow: 0 0 8px #ff3333;
 }
 
 /* The Big Black Log Box */
@@ -259,7 +262,7 @@ header h1 {
   box-shadow: 0 0 8px #ff0044;
 }
 
-/* --- NEW: THE THERMAL MELTDOWN ANIMATION --- */
+/* THE THERMAL MELTDOWN ANIMATION */
 @keyframes thermalAlarm {
   0% {
     background-color: var(--bg-dark);
@@ -290,6 +293,5 @@ body.thermal-meltdown #digital-clock {
 
 body.thermal-meltdown .status-card {
   background: rgba(0, 0, 0, 0.9);
-  /* Keep cards dark so you can still read them */
   border-color: #ff0044;
 }

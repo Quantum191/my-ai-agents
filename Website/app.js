@@ -73,17 +73,18 @@ async function updateDashboard() {
     const gpuVal = data.gpu === "N/A" ? 0 : data.gpu;
     updateBar('.network', gpuVal, `GPU: ${gpuVal}%`);
 
-    // --- NEW: Temperature Display & Alarm Trigger ---
-    const cpuTempEl = document.getElementById('cpu-temp');
-    if (cpuTempEl) cpuTempEl.innerText = data.cpu_temp !== "N/A" ? `${data.cpu_temp}°C` : 'N/A';
-
-    const gpuTempEl = document.getElementById('gpu-temp');
-    if (gpuTempEl) gpuTempEl.innerText = data.gpu_temp !== "N/A" ? `${data.gpu_temp}°C` : 'N/A';
-
-    // Check for Meltdown (>= 80 degrees)
+    // --- NEW: Temperature Bars and Logic ---
     const cTemp = parseInt(data.cpu_temp) || 0;
     const gTemp = parseInt(data.gpu_temp) || 0;
 
+    // Use Math.min to ensure the bar doesn't grow past 100% width
+    const cTempWidth = Math.min(cTemp, 100);
+    const gTempWidth = Math.min(gTemp, 100);
+
+    updateBar('.cpu-temp', cTempWidth, `CPU TEMP: ${data.cpu_temp !== "N/A" ? cTemp + '°C' : 'N/A'}`);
+    updateBar('.gpu-temp', gTempWidth, `GPU TEMP: ${data.gpu_temp !== "N/A" ? gTemp + '°C' : 'N/A'}`);
+
+    // Thermal Meltdown Check (>= 80 degrees)
     if (cTemp >= 80 || gTemp >= 80) {
       document.body.classList.add('thermal-meltdown');
     } else {
