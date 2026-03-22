@@ -3,6 +3,7 @@
   --card-bg: rgba(20, 20, 20, 0.9);
   --neon-blue: #00d2ff;
   --neon-green: #39ff14;
+  --neon-amber: #ff9900;
   --text-main: #e0e0e0;
 }
 
@@ -15,7 +16,6 @@ body {
   align-items: center;
   padding: 20px;
   min-height: 100vh;
-  transition: background-color 0.2s;
 }
 
 header {
@@ -37,12 +37,9 @@ header h1 {
   font-size: 2.2rem;
   color: var(--text-main);
   font-weight: bold;
-  letter-spacing: 2px;
   margin: 10px 0;
-  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
-/* Hardware Grid - OPTIMIZED for 6 cards (3 columns, 2 rows) */
 #system-status {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -63,7 +60,6 @@ header h1 {
   font-size: 0.7rem;
   color: #777;
   margin-bottom: 8px;
-  position: relative;
 }
 
 .bar {
@@ -82,7 +78,6 @@ header h1 {
 
 .cpu .fill {
   background: var(--neon-blue);
-  box-shadow: 0 0 8px var(--neon-blue);
 }
 
 .ram .fill {
@@ -97,18 +92,11 @@ header h1 {
   background: #ff9900;
 }
 
-/* NEW: Thermal Bar Colors */
-.cpu-temp .fill {
-  background: #ff3333;
-  box-shadow: 0 0 8px #ff3333;
-}
-
+.cpu-temp .fill,
 .gpu-temp .fill {
   background: #ff3333;
-  box-shadow: 0 0 8px #ff3333;
 }
 
-/* The Big Black Log Box */
 #log-container {
   width: 100%;
   max-width: 800px;
@@ -122,28 +110,47 @@ header h1 {
 .container-header {
   font-size: 0.7rem;
   color: #444;
-  margin-bottom: 10px;
-  border-bottom: 1px solid #111;
-  padding-bottom: 5px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #111;
+  padding-bottom: 5px;
+}
+
+.header-actions {
+  display: flex;
+  gap: 8px;
 }
 
 #log-display {
-  height: 150px;
-  overflow-y: auto;
+  height: 400px;
+  overflow-y: scroll;
   color: var(--neon-green);
   font-size: 0.85rem;
   line-height: 1.6;
 }
 
-#clear-btn {
+#log-display::-webkit-scrollbar {
+  width: 6px;
+}
+
+#log-display::-webkit-scrollbar-track {
+  background: #000;
+}
+
+#log-display::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+#clear-btn,
+#cleanup-btn {
   background: transparent;
   border: 1px solid #333;
   color: #777;
   font-size: 0.6rem;
-  padding: 3px 8px;
+  padding: 3px 10px;
   border-radius: 4px;
   cursor: pointer;
   transition: all 0.2s;
@@ -153,10 +160,15 @@ header h1 {
   background: #ff0044;
   color: #fff;
   border-color: #ff0044;
-  box-shadow: 0 0 5px #ff0044;
 }
 
-/* Command Center */
+#cleanup-btn:hover {
+  background: var(--neon-amber);
+  color: #000;
+  border-color: var(--neon-amber);
+  box-shadow: 0 0 8px var(--neon-amber);
+}
+
 #command-center {
   width: 100%;
   max-width: 800px;
@@ -181,24 +193,16 @@ header h1 {
   border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
-  color: #000;
 }
 
 #abort-btn {
   background: #ff0044;
-  border: 1px solid #ff0044;
+  color: #fff;
+  border: none;
   padding: 0 20px;
   border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
-  color: #fff;
-  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-  transition: all 0.2s;
-}
-
-#abort-btn:hover {
-  background: #cc0033;
-  box-shadow: 0 0 10px #ff0044;
 }
 
 #response-box {
@@ -217,12 +221,10 @@ header h1 {
 
 .status-idle {
   color: #39ff14;
-  text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
 }
 
 .status-active {
   color: #00d2ff;
-  text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
 }
 
 .status-error {
@@ -230,7 +232,6 @@ header h1 {
   font-weight: bold;
 }
 
-/* Step Progress Bar */
 #step-progress {
   display: flex;
   gap: 4px;
@@ -244,25 +245,20 @@ header h1 {
   height: 6px;
   background: #222;
   border-radius: 2px;
-  transition: all 0.3s ease;
 }
 
 .step-segment.active {
   background: var(--neon-blue);
-  box-shadow: 0 0 6px var(--neon-blue);
 }
 
 .step-segment.success {
   background: var(--neon-green);
-  box-shadow: 0 0 8px var(--neon-green);
 }
 
 .step-segment.error {
   background: #ff0044;
-  box-shadow: 0 0 8px #ff0044;
 }
 
-/* THE THERMAL MELTDOWN ANIMATION */
 @keyframes thermalAlarm {
   0% {
     background-color: var(--bg-dark);
@@ -272,10 +268,6 @@ header h1 {
     background-color: #aa0000;
   }
 
-  75% {
-    background-color: #ffffff;
-  }
-
   100% {
     background-color: var(--bg-dark);
   }
@@ -283,15 +275,4 @@ header h1 {
 
 body.thermal-meltdown {
   animation: thermalAlarm 0.8s infinite;
-}
-
-body.thermal-meltdown h1,
-body.thermal-meltdown #digital-clock {
-  color: #fff;
-  text-shadow: 0 0 15px #000;
-}
-
-body.thermal-meltdown .status-card {
-  background: rgba(0, 0, 0, 0.9);
-  border-color: #ff0044;
 }
