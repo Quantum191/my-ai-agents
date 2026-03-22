@@ -3,8 +3,7 @@ import logging
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-# --- MUTE FLASK SPAM ---
-# This prevents the "GET /stats.json 200" lines from flooding your terminal and logs
+# Mute Flask Spam
 log = logging.getLogger('werkzeug')
 log.setLevel(logging.ERROR)
 
@@ -44,10 +43,18 @@ def ask_bot():
         print(f"❌ SERVER ERROR: {e}")
         return jsonify({"error": str(e)}), 500
 
+# NEW: The Abort Route
+@app.route('/abort', methods=['POST'])
+def abort_task():
+    my_agent.abort_signal = True
+    print("\n[WEB] 🛑 ABORT SIGNAL TRIGGERED BY USER!")
+    return jsonify({"status": "Abort signal sent."})
+
 if __name__ == '__main__':
     print("\n" + "="*40)
     print("🚀 DEV-01 Web Interface is starting...")
     print("📍 URL: http://localhost:8080")
     print("="*40 + "\n")
     
-    app.run(host='0.0.0.0', port=8080, debug=False) # Turned debug to False to help reduce noise
+    # NEW: threaded=True ensures the server can handle the abort button while processing a task
+    app.run(host='0.0.0.0', port=8080, debug=False, threaded=True)

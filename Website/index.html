@@ -12,7 +12,8 @@
 
   <header>
     <h1>DEV-01 NODE MANAGEMENT</h1>
-    <p>AGENT STATUS: <span id="status-text">Idle</span></p>
+    <div id="digital-clock">00:00:00</div>
+    <p>AGENT STATUS: <span id="status-text" class="status-idle">Idle</span></p>
   </header>
 
   <main id="system-status">
@@ -44,13 +45,13 @@
 
   <section id="log-container">
     <div class="container-header">AGENT_THOUGHT_STREAM</div>
-    <div id="log-display">
-    </div>
+    <div id="log-display"></div>
   </section>
 
   <section id="command-center">
     <input type="text" id="user-input" placeholder="Enter command for DEV-01..." autocomplete="off">
     <button id="send-btn">EXECUTE</button>
+    <button id="abort-btn" class="hidden">ABORT TASK</button>
   </section>
 
   <section id="response-box" class="hidden">

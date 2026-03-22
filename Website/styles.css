@@ -25,6 +25,17 @@ header {
 header h1 {
   letter-spacing: 3px;
   color: #fff;
+  margin-bottom: 5px;
+}
+
+/* --- NEW: Clock Styling --- */
+#digital-clock {
+  font-size: 2.2rem;
+  color: var(--text-main);
+  font-weight: bold;
+  letter-spacing: 2px;
+  margin: 10px 0;
+  text-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
 }
 
 /* Hardware Grid */
@@ -108,12 +119,55 @@ header h1 {
   line-height: 1.6;
 }
 
-/* Command Center */
+/* Update your existing #command-center elements */
 #command-center {
   width: 100%;
   max-width: 800px;
   display: flex;
   gap: 10px;
+}
+
+#user-input {
+  flex-grow: 1;
+  background: #111;
+  border: 1px solid #333;
+  padding: 12px;
+  color: #fff;
+  border-radius: 6px;
+  outline: none;
+}
+
+#send-btn {
+  background: var(--neon-blue);
+  border: none;
+  padding: 0 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #000;
+}
+
+/* NEW: Abort Button Styling */
+#abort-btn {
+  background: #ff0044;
+  border: 1px solid #ff0044;
+  padding: 0 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #fff;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s;
+}
+
+#abort-btn:hover {
+  background: #cc0033;
+  box-shadow: 0 0 10px #ff0044;
+}
+
+/* Ensure hidden overrides block */
+.hidden {
+  display: none !important;
 }
 
 #user-input {
@@ -148,4 +202,20 @@ header h1 {
 
 .hidden {
   display: none;
+}
+
+/* Dedicated Status Classes */
+.status-idle {
+  color: #39ff14;
+  text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
+}
+
+.status-active {
+  color: #00d2ff;
+  text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
+}
+
+.status-error {
+  color: #ff0000;
+  font-weight: bold;
 }

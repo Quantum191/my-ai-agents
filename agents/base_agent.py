@@ -8,7 +8,6 @@ from memory.memory_manager import AgentMemory
 from tools.file_manager import read_project_file, list_project_files, write_project_file, run_project_code, make_directory
 from tools.git_manager import run_git_command
 
-# --- 1. LOGGING SETUP ---
 LOG_PATH = "/home/sean/my-ai-agents/memory/agent.log"
 os.makedirs(os.path.dirname(LOG_PATH), exist_ok=True)
 
@@ -29,6 +28,7 @@ class CoderAgent:
         self.status_path = "/home/sean/my-ai-agents/memory/status.txt"
         self.memory = AgentMemory()
         self.http_session = requests.Session()
+        self.abort_signal = False # NEW: The Kill Switch Flag
 
     def set_status(self, text):
         try:
@@ -48,17 +48,20 @@ class CoderAgent:
         step = 1
         last_obs = "None."
         action_history = [] 
+        self.abort_signal = False # Reset the flag on every new task
         
         self.set_status("Step 1/15: Thinking...")
         logger.info(f"--- NEW TASK RECEIVED: {prompt} ---")
         
         while step <= 15:
+            # NEW: Check if the user hit the ABORT button
+            if self.abort_signal:
+                logger.info("🛑 MISSION ABORTED BY SYSTEM OVERRIDE.")
+                self.set_status("Idle")
+                return "MISSION ABORTED BY USER."
+
             logger.info(f"Step {step}: Analyzing environment...")
-            
-            # THE FIX: Safely grab only the first 15 files to prevent overwhelming the AI, 
-            # then convert to a string without chopping file extensions in half.
             files = str(list_project_files()[:15])
-            
             history_text = "\n".join(action_history) if action_history else "No actions taken yet."
 
             system_msg = (
@@ -108,18 +111,12 @@ class CoderAgent:
                     return final_text
 
                 # Tool Routing
-                if action == "mkdir": 
-                    last_obs = make_directory(data.get("filename") or data.get("command"))
-                elif action == "write": 
-                    last_obs = write_project_file(data.get("filename"), data.get("code", ""))
-                elif action == "git": 
-                    last_obs = run_git_command(data.get("command"))
-                elif action == "run": 
-                    last_obs = run_project_code(data.get("filename") or data.get("command"))
-                elif action == "read": 
-                    last_obs = read_project_file(data.get("filename"))
-                else: 
-                    last_obs = f"Unknown tool: {action}"
+                if action == "mkdir": last_obs = make_directory(data.get("filename") or data.get("command"))
+                elif action == "write": last_obs = write_project_file(data.get("filename"), data.get("code", ""))
+                elif action == "git": last_obs = run_git_command(data.get("command"))
+                elif action == "run": last_obs = run_project_code(data.get("filename") or data.get("command"))
+                elif action == "read": last_obs = read_project_file(data.get("filename"))
+                else: last_obs = f"Unknown tool: {action}"
                 
                 logger.info(f"Step {step} Result: {str(last_obs)[:100]}")
                 action_history.append(f"Used '{action}' -> Result: {str(last_obs)[:100]}")

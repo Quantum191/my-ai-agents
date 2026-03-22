@@ -1,8 +1,10 @@
-from tools.file_manager import list_project_files, read_project_file
+# Placeholder code for testing vision functionalities
+import cv2
 
-print("--- FILE LIST ---")
-files = list_project_files().split('\n')
-print(files)
+def test_image_processing():
+    image = cv2.imread('test_image.jpg')
+    # Add your vision processing logic here
+    assert image is not None, "Image not found"
+    print("Vision test passed")
 
-print("\n--- CONTENT TEST (main.py) ---")
-print(read_project_file("main.py")[:100]) # Print first 100 chars
+test_image_processing()
