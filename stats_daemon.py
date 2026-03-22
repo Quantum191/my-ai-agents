@@ -1,23 +1,35 @@
 import time
+import json
 import os
 from tools.system_stats import get_system_stats
 
-print("🚀 DEV-01 Live Stats Daemon Started...")
-print(f"Current Working Directory: {os.getcwd()}")
-print("Checking for Website/stats.json...")
+STATS_FILE = "stats.json"
 
-try:
+def run_daemon():
+    print("🚀 Stats Daemon Started...")
+    print(f"Updating {STATS_FILE} every 2 seconds. Press Ctrl+C to stop.")
+    
     while True:
-        # Call the tool and capture the return message
-        status_msg = get_system_stats()
-        
-        # Print the timestamp and the result so we can see it working
-        timestamp = time.strftime('%H:%M:%S')
-        print(f"[{timestamp}] {status_msg}")
-        
-        # Wait 2 seconds before the next update
-        time.sleep(2)
-except KeyboardInterrupt:
-    print("\nStopping Daemon...")
-except Exception as e:
-    print(f"DAEMON CRASHED: {e}")
+        try:
+            # 1. Collect latest data
+            data = get_system_stats()
+            
+            # 2. Write to JSON file
+            with open(STATS_FILE, 'w') as f:
+                json.dump(data, f, indent=4)
+            
+            # 3. Small console heartbeat so you know it's working
+            # Use \r to overwrite the same line in the terminal
+            print(f"\r[HEARTBEAT] GPU: {data['gpu']}% | CPU: {data['cpu']}%", end="")
+            
+            time.sleep(2)
+            
+        except KeyboardInterrupt:
+            print("\n👋 Daemon stopped by user.")
+            break
+        except Exception as e:
+            print(f"\n❌ Error in daemon: {e}")
+            time.sleep(5) # Wait a bit before retrying on error
+
+if __name__ == "__main__":
+    run_daemon()

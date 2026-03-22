@@ -1,74 +1,42 @@
+from flask import Flask, render_template, request, jsonify, send_from_directory
+import json
 import os
-import logging
-from flask import Flask, request, jsonify, send_from_directory
-from flask_cors import CORS
 
-# Mute Flask Spam
-log = logging.getLogger('werkzeug')
-log.setLevel(logging.ERROR)
+app = Flask(__name__, static_folder='Website', template_folder='Website')
 
-try:
-    from agents.base_agent import my_agent
-except ImportError as e:
-    print(f"❌ CRITICAL ERROR: Could not find agents/base_agent.py\n{e}")
-    exit(1)
-
-app = Flask(__name__, static_folder='Website')
-CORS(app)
+# Ensure stats.json exists
+STATS_FILE = "stats.json"
 
 @app.route('/')
 def index():
-    return send_from_directory(app.static_folder, 'index.html')
+    return render_template('index.html')
 
-@app.route('/<path:path>')
-def static_files(path):
-    return send_from_directory(app.static_folder, path)
+@app.route('/stats.json')
+def get_stats():
+    """Serves the latest hardware stats from disk."""
+    try:
+        if os.path.exists(STATS_FILE):
+            with open(STATS_FILE, 'r') as f:
+                data = json.load(f)
+            return jsonify(data)
+        return jsonify({"error": "Stats file not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/ask', methods=['POST'])
-def ask_bot():
-    try:
-        data = request.json
-        prompt = data.get("prompt")
-        
-        if not prompt:
-            return jsonify({"error": "No prompt"}), 400
-        
-        print(f"\n[WEB] --> Task: {prompt}")
-        response = my_agent.ask_ai(prompt)
-        print(f"[WEB] <-- Agent Finished.")
-        
-        return jsonify({"response": response})
-        
-    except Exception as e:
-        print(f"❌ SERVER ERROR: {e}")
-        return jsonify({"error": str(e)}), 500
+def ask():
+    data = request.json
+    user_prompt = data.get('prompt', '')
+    
+    # Here you would trigger your DEV-01 agent logic
+    # For now, we return a mock response
+    print(f"Agent received prompt: {user_prompt}")
+    return jsonify({"response": f"DEV-01: Processing request for '{user_prompt}'..."})
 
-@app.route('/abort', methods=['POST'])
-def abort_task():
-    my_agent.abort_signal = True
-    print("\n[WEB] 🛑 ABORT SIGNAL TRIGGERED BY USER!")
-    return jsonify({"status": "Abort signal sent."})
-
-# --- NEW: The Wipe Route ---
-@app.route('/clear', methods=['POST'])
-def clear_logs():
-    log_path = "/home/sean/my-ai-agents/memory/agent.log"
-    status_path = "/home/sean/my-ai-agents/memory/status.txt"
-    try:
-        # Wipe the log file empty
-        open(log_path, 'w').close()
-        # Reset the status back to Idle
-        with open(status_path, 'w') as f:
-            f.write("Idle")
-        print("\n[WEB] 🧹 System logs cleared.")
-        return jsonify({"status": "Cleaned."})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+@app.route('/<path:path>')
+def send_static(path):
+    return send_from_directory('Website', path)
 
 if __name__ == '__main__':
-    print("\n" + "="*40)
-    print("🚀 DEV-01 Web Interface is starting...")
-    print("📍 URL: http://localhost:8080")
-    print("="*40 + "\n")
-    
-    app.run(host='0.0.0.0', port=8080, debug=False, threaded=True)
+    # Run on port 5000
+    app.run(host='0.0.0.0', port=5000, debug=True)

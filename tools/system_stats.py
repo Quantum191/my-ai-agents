@@ -1,59 +1,29 @@
-import psutil
-import json
+import subprocess
 import os
 
 def get_system_stats():
-    ROOT = "/home/sean/my-ai-agents"
-    STATUS_FILE = os.path.join(ROOT, "memory", "status.txt")
-    LOG_FILE = os.path.join(ROOT, "memory", "agent.log")
-    TARGET_JSON = os.path.join(ROOT, "Website", "stats.json")
-
+    """Gathers the metrics for the 4070 and CPU."""
+    gpu_util, gpu_temp = 0, 0
     try:
-        cpu = psutil.cpu_percent(interval=0.1)
-        ram = psutil.virtual_memory().percent
-        storage = psutil.disk_usage('/').percent
-        
-        cpu_temp = "N/A"
-        gpu_temp = "N/A"
-        
-        if hasattr(psutil, "sensors_temperatures"):
-            temps = psutil.sensors_temperatures()
-            if temps:
-                for name in ['coretemp', 'k10temp', 'cpu_thermal', 'acpitz']:
-                    if name in temps and len(temps[name]) > 0:
-                        cpu_temp = round(temps[name][0].current)
-                        break
+        cmd = ["nvidia-smi", "--query-gpu=utilization.gpu,temperature.gpu", "--format=csv,noheader,nounits"]
+        res = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        parts = res.stdout.strip().split(',')
+        gpu_util = int(parts[0].strip())
+        gpu_temp = int(parts[1].strip())
+    except:
+        pass
 
-        try:
-            import subprocess
-            nv_output = subprocess.check_output(['nvidia-smi', '--query-gpu=temperature.gpu', '--format=csv,noheader'], timeout=2)
-            gpu_temp = int(nv_output.decode('utf-8').strip())
-        except:
-            if hasattr(psutil, "sensors_temperatures") and 'amdgpu' in temps and len(temps['amdgpu']) > 0:
-                gpu_temp = round(temps['amdgpu'][0].current)
+    cpu_util = 0
+    try:
+        cpu_util = float(os.popen("top -bn1 | grep 'Cpu(s)' | awk '{print $2 + $4}'").read().strip())
+    except:
+        cpu_util = 0
 
-        current_status = "Idle"
-        if os.path.exists(STATUS_FILE):
-            with open(STATUS_FILE, "r") as f:
-                current_status = f.read().strip() or "Idle"
-
-        logs = []
-        if os.path.exists(LOG_FILE):
-            with open(LOG_FILE, "r") as f:
-                all_lines = f.readlines()
-                clean_lines = [line.strip() for line in all_lines if line.strip() and "HTTP/1.1" not in line]
-                # UPDATED: Now pulling the last 100 lines for deep scrolling
-                logs = clean_lines[-100:] 
-        
-        data = {
-            "cpu": cpu, "ram": ram, "status": current_status, "gpu": "N/A",
-            "storage": storage, "logs": logs, "cpu_temp": cpu_temp, "gpu_temp": gpu_temp
-        }
-
-        with open(TARGET_JSON, "w") as f:
-            json.dump(data, f)
-            
-        return f"SUCCESS: Log history expanded to 100 lines."
-
-    except Exception as e:
-        return f"STATS ERROR: {str(e)}"
+    return {
+        "cpu": cpu_util,
+        "ram": 45, # Placeholder
+        "gpu": gpu_util,
+        "gpu_temp": gpu_temp,
+        "status": "SYSTEM_OPERATIONAL",
+        "logs": [f"NVIDIA_4070: {gpu_util}%", f"CORE_TEMP: {gpu_temp}C"]
+    }

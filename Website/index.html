@@ -4,81 +4,198 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DEV-01 Command Center</title>
-  <link rel="stylesheet" href="styles.css">
+  <title>DEV-01 // NEURAL LINK</title>
+  <style>
+    :root {
+      --bg-color: #050505;
+      --panel-bg: rgba(15, 15, 15, 0.9);
+      --neon-cyan: #00f3ff;
+      --neon-magenta: #ff00ff;
+      --neon-yellow: #f3f315;
+      --text-main: #e0e0e0;
+      --border-glow: 0 0 10px rgba(0, 243, 255, 0.3);
+    }
+
+    body {
+      background-color: var(--bg-color);
+      color: var(--text-main);
+      font-family: 'Courier New', Courier, monospace;
+      margin: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      overflow: hidden;
+      background-image:
+        linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+      background-size: 30px 30px;
+    }
+
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      background-size: 100% 2px, 3px 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    .dashboard-container {
+      width: 90%;
+      max-width: 1000px;
+      background: var(--panel-bg);
+      border: 2px solid var(--neon-cyan);
+      box-shadow: var(--border-glow);
+      padding: 20px;
+      position: relative;
+      clip-path: polygon(0 20px, 20px 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--neon-cyan);
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      color: var(--neon-cyan);
+      text-shadow: 0 0 5px var(--neon-cyan);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: rgba(0, 0, 0, 0.5);
+      border-left: 4px solid var(--neon-magenta);
+      padding: 10px;
+    }
+
+    .stat-card h3 {
+      margin: 0 0 10px 0;
+      font-size: 0.8rem;
+      color: var(--neon-magenta);
+      text-transform: uppercase;
+    }
+
+    .progress-container {
+      width: 100%;
+      height: 12px;
+      background: #222;
+      border: 1px solid #444;
+      position: relative;
+    }
+
+    .fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, var(--neon-magenta), var(--neon-cyan));
+      box-shadow: 0 0 10px var(--neon-cyan);
+      transition: width 0.5s ease-in-out;
+    }
+
+    #log-display {
+      height: 150px;
+      background: #000;
+      border: 1px solid #333;
+      padding: 10px;
+      overflow-y: auto;
+      font-size: 0.85rem;
+      color: #00ff41;
+      margin-bottom: 15px;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    input {
+      flex-grow: 1;
+      background: #111;
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      padding: 10px;
+      outline: none;
+    }
+
+    button {
+      background: var(--neon-cyan);
+      color: #000;
+      border: none;
+      padding: 10px 20px;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+    }
+
+    #digital-clock {
+      color: var(--neon-yellow);
+      font-weight: bold;
+    }
+  </style>
 </head>
 
 <body>
+  <div class="dashboard-container">
+    <div class="header">
+      <div>
+        <h1>DEV-01 // MAIN_FRAME</h1>
+        <small id="status-text" style="color: var(--neon-cyan)">SYSTEM_OPERATIONAL</small>
+      </div>
+      <div id="digital-clock">00:00:00</div>
+    </div>
 
-  <header>
-    <h1>DEV-01 NODE MANAGEMENT</h1>
-    <div id="digital-clock">00:00:00</div>
-    <p>AGENT STATUS: <span id="status-text" class="status-idle">Idle</span></p>
+    <div class="stats-grid">
+      <div class="stat-card cpu">
+        <h3 id="cpu-label">CPU_LOAD: 0%</h3>
+        <div class="progress-container">
+          <div class="fill" id="cpu-fill"></div>
+        </div>
+      </div>
+      <div class="stat-card ram">
+        <h3 id="ram-label">MEM_USED: 0%</h3>
+        <div class="progress-container">
+          <div class="fill" id="ram-fill"></div>
+        </div>
+      </div>
+      <div class="stat-card gpu">
+        <h3 id="gpu-label">4070_LOAD: 0%</h3>
+        <div class="progress-container">
+          <div class="fill" id="gpu-fill"></div>
+        </div>
+      </div>
+      <div class="stat-card temp">
+        <h3 id="temp-label">CORE_TEMP: 0°C</h3>
+        <div class="progress-container">
+          <div class="fill" id="temp-fill"></div>
+        </div>
+      </div>
+    </div>
 
-    <div id="step-progress"></div>
-  </header>
-
-  <main id="system-status">
-    <div class="status-card cpu">
-      <h3>CPU</h3>
-      <div class="bar">
-        <div class="fill"></div>
-      </div>
-    </div>
-    <div class="status-card ram">
-      <h3>RAM</h3>
-      <div class="bar">
-        <div class="fill"></div>
-      </div>
-    </div>
-    <div class="status-card network">
-      <h3>GPU</h3>
-      <div class="bar">
-        <div class="fill"></div>
-      </div>
-    </div>
-    <div class="status-card storage">
-      <h3>DISK</h3>
-      <div class="bar">
-        <div class="fill"></div>
-      </div>
-    </div>
-    <div class="status-card cpu-temp">
-      <h3>CPU TEMP</h3>
-      <div class="bar">
-        <div class="fill"></div>
-      </div>
-    </div>
-    <div class="status-card gpu-temp">
-      <h3>GPU TEMP</h3>
-      <div class="bar">
-        <div class="fill"></div>
-      </div>
-    </div>
-  </main>
-
-  <section id="log-container">
-    <div class="container-header">
-      <span>AGENT_THOUGHT_STREAM</span>
-      <div class="header-actions">
-        <button id="cleanup-btn">CLEANUP</button>
-        <button id="clear-btn">CLEAR</button>
-      </div>
-    </div>
     <div id="log-display"></div>
-  </section>
 
-  <section id="command-center">
-    <input type="text" id="user-input" placeholder="Enter command for DEV-01..." autocomplete="off">
-    <button id="send-btn">EXECUTE</button>
-    <button id="abort-btn" class="hidden">ABORT TASK</button>
-  </section>
-
-  <section id="response-box" class="hidden">
-    <div class="response-header">MISSION_REPORT:</div>
-    <div id="response-content"></div>
-  </section>
-
+    <div class="input-group">
+      <input type="text" id="user-input" placeholder="ENTER COMMAND..." autocomplete="off">
+      <button id="send-btn">EXECUTE</button>
+    </div>
+  </div>
   <script src="app.js"></script>
 </body>
 

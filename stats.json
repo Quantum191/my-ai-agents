@@ -1,0 +1,11 @@
+{
+    "cpu": 2.2,
+    "ram": 34.1,
+    "storage": 15.3,
+    "gpu": 14,
+    "gpu_temp": 42,
+    "status": "Online",
+    "logs": [
+        "NVIDIA 4070: 14% Usage | 42\u00b0C"
+    ]
+}
