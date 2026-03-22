@@ -1,13 +1,22 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang='en'>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Website</title>
-    <link rel="stylesheet" href="styles.css">
+    <meta charset='UTF-8'>
+    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
+    <title>DEV-01 OS Dashboard</title>
+    <link rel='stylesheet' href='styles.css'>
 </head>
 <body>
-    <h1>Welcome to My Website</h1>
-    <script src="app.js"></script>
+    <header>
+        <h1>DEV-01 Node Management</h1>
+        <p>System Status: <span id='status-text'>Active</span></p>
+    </header>
+    <main id='system-status'>
+        <div class='status-card cpu'><h3>CPU Usage</h3><div class='bar'><div class='fill' style='width: 45%'></div></div></div>
+        <div class='status-card ram'><h3>RAM Usage</h3><div class='bar'><div class='fill' style='width: 62%'></div></div></div>
+        <div class='status-card network'><h3>Network</h3><p>Signal: Stable</p></div>
+        <div class='status-card storage'><h3>Storage</h3><p>Available: 1.2TB</p></div>
+    </main>
+    <script src='app.js'></script>
 </body>
 </html>
