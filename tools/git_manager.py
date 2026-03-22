@@ -1,52 +1,44 @@
 import subprocess
-import logging
-
-logger = logging.getLogger("GitManager")
+import os
 
 def run_git_command(command_string):
-    """Executes a git command in the shell and returns the output."""
-    if not command_string:
-        return "Error: No git command provided by the AI."
-        
-    # Prevent the AI from accidentally running 'git git init'
-    if command_string.startswith("git "):
-        command_string = command_string[4:]
-        
-    full_command = f"git {command_string}"
-    
+    """Executes a git command and returns the output or error."""
     try:
-        # shell=True allows us to handle complex quotes in commit messages safely
+        # Split the command string into a list for subprocess
+        # e.g., "add ." -> ["git", "add", "."]
+        cmd = ["git"] + command_string.split()
+        
+        # We set an environment variable to prevent git from 
+        # hanging on password/credential prompts.
+        env = os.environ.copy()
+        env["GIT_TERMINAL_PROMPT"] = "0"
+
         result = subprocess.run(
-            full_command, 
-            shell=True, 
-            capture_output=True, 
-            text=True
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False, # We handle the error ourselves
+            env=env
         )
-        
-        output = result.stdout.strip()
-        error = result.stderr.strip()
-        
-        # If the command succeeded (return code 0)
+
         if result.returncode == 0:
-            return output if output else "Command executed successfully (no output)."
+            return f"SUCCESS: {result.stdout.strip() if result.stdout else 'Command executed.'}"
         else:
-            # If git threw an error (like 'not a git repository')
-            return f"Git Error (Code {result.returncode}): {error}\n{output}"
-            
+            # If it fails, we return the specific error message from git
+            return f"GIT ERROR: {result.stderr.strip()}"
+
     except Exception as e:
-        logger.error(f"Failed to execute git command: {e}")
-        return f"System Execution Error: {str(e)}"
+        return f"SYSTEM ERROR: Could not run git: {str(e)}"
 
 def git_sync():
-    """Helper function to pull and push updates to the cloud."""
-    try:
-        pull = subprocess.run("git pull", shell=True, capture_output=True, text=True)
-        push = subprocess.run("git push", shell=True, capture_output=True, text=True)
-        
-        out = ""
-        if pull.stdout: out += f"Pull: {pull.stdout.strip()}\n"
-        if push.stdout: out += f"Push: {push.stdout.strip()}\n"
-        
-        return out if out else "Sync completed successfully."
-    except Exception as e:
-        return f"Sync Error: {str(e)}"
+    """A helper to add, commit, and push in one go."""
+    add_res = run_git_command("add .")
+    if "ERROR" in add_res: return add_res
+    
+    commit_res = run_git_command("commit -m 'Automated update from DEV-01 Dashboard'")
+    if "nothing to commit" in commit_res.lower():
+        return "SUCCESS: No changes to commit."
+    if "ERROR" in commit_res: return commit_res
+    
+    push_res = run_git_command("push")
+    return push_res

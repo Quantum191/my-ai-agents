@@ -1,0 +1,5 @@
+#!/bin/sh
+
+git add .
+git commit -m 'Update files and changes'
+git push origin main
