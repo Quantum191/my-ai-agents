@@ -1,1 +1,1 @@
-{"cpu": 3.5, "ram": 43.0, "status": "Idle", "gpu": "N/A", "storage": 15.1, "logs": ["LOG_SYSTEM_EMPTY: Waiting for agent activity..."]}
+{"cpu": 1.5, "ram": 42.9, "status": "Idle", "gpu": "N/A", "storage": 15.1, "logs": ["> 04:47:21: Local SQLite database initialized successfully."], "cpu_temp": 54, "gpu_temp": 41}

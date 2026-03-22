@@ -73,6 +73,23 @@ async function updateDashboard() {
     const gpuVal = data.gpu === "N/A" ? 0 : data.gpu;
     updateBar('.network', gpuVal, `GPU: ${gpuVal}%`);
 
+    // --- NEW: Temperature Display & Alarm Trigger ---
+    const cpuTempEl = document.getElementById('cpu-temp');
+    if (cpuTempEl) cpuTempEl.innerText = data.cpu_temp !== "N/A" ? `${data.cpu_temp}°C` : 'N/A';
+
+    const gpuTempEl = document.getElementById('gpu-temp');
+    if (gpuTempEl) gpuTempEl.innerText = data.gpu_temp !== "N/A" ? `${data.gpu_temp}°C` : 'N/A';
+
+    // Check for Meltdown (>= 80 degrees)
+    const cTemp = parseInt(data.cpu_temp) || 0;
+    const gTemp = parseInt(data.gpu_temp) || 0;
+
+    if (cTemp >= 80 || gTemp >= 80) {
+      document.body.classList.add('thermal-meltdown');
+    } else {
+      document.body.classList.remove('thermal-meltdown');
+    }
+
     const logDisplay = document.getElementById('log-display');
     if (logDisplay && data.logs && data.logs.length > 0) {
       logDisplay.innerHTML = data.logs.map(log => `<div>> ${log}</div>`).join('');
@@ -157,18 +174,15 @@ async function triggerAbort() {
   } catch (e) { }
 }
 
-// --- NEW: Trigger Screen Wipe ---
 async function triggerClear() {
   try {
     await fetch('/clear', { method: 'POST' });
-    // Visually wipe the UI instantly
     const logDisplay = document.getElementById('log-display');
     if (logDisplay) logDisplay.innerHTML = "";
 
     const resBox = document.getElementById('response-box');
     if (resBox) resBox.classList.add('hidden');
 
-    // Blank out the progress segments
     for (let i = 1; i <= 15; i++) {
       const seg = document.getElementById(`seg-${i}`);
       if (seg) seg.classList.remove('active', 'success', 'error');
@@ -181,7 +195,7 @@ async function triggerClear() {
 // Event Listeners
 document.getElementById('send-btn').addEventListener('click', sendCommand);
 document.getElementById('abort-btn').addEventListener('click', triggerAbort);
-document.getElementById('clear-btn').addEventListener('click', triggerClear); // NEW
+document.getElementById('clear-btn').addEventListener('click', triggerClear);
 
 document.getElementById('user-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {

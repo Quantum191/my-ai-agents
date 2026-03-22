@@ -15,6 +15,7 @@ body {
   align-items: center;
   padding: 20px;
   min-height: 100vh;
+  transition: background-color 0.2s;
 }
 
 header {
@@ -62,6 +63,15 @@ header h1 {
   font-size: 0.7rem;
   color: #777;
   margin-bottom: 8px;
+  position: relative;
+}
+
+/* NEW: Temperature Text Styling */
+.temp-display {
+  float: right;
+  color: #fff;
+  font-weight: bold;
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
 }
 
 .bar {
@@ -112,149 +122,6 @@ header h1 {
   margin-bottom: 10px;
   border-bottom: 1px solid #111;
   padding-bottom: 5px;
-}
-
-#log-display {
-  height: 150px;
-  overflow-y: auto;
-  color: var(--neon-green);
-  font-size: 0.85rem;
-  line-height: 1.6;
-}
-
-/* Command Center */
-#command-center {
-  width: 100%;
-  max-width: 800px;
-  display: flex;
-  gap: 10px;
-}
-
-#user-input {
-  flex-grow: 1;
-  background: #111;
-  border: 1px solid #333;
-  padding: 12px;
-  color: #fff;
-  border-radius: 6px;
-  outline: none;
-}
-
-#send-btn {
-  background: var(--neon-blue);
-  border: none;
-  padding: 0 20px;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  color: #000;
-}
-
-/* Abort Button Styling */
-#abort-btn {
-  background: #ff0044;
-  border: 1px solid #ff0044;
-  padding: 0 20px;
-  border-radius: 6px;
-  font-weight: bold;
-  cursor: pointer;
-  color: #fff;
-  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-  transition: all 0.2s;
-}
-
-#abort-btn:hover {
-  background: #cc0033;
-  box-shadow: 0 0 10px #ff0044;
-}
-
-/* Mission Report */
-#response-box {
-  margin-top: 15px;
-  width: 100%;
-  max-width: 800px;
-  padding: 15px;
-  background: rgba(0, 210, 255, 0.05);
-  border: 1px solid var(--neon-blue);
-  border-radius: 8px;
-}
-
-.hidden {
-  display: none !important;
-}
-
-/* Dedicated Status Classes */
-.status-idle {
-  color: #39ff14;
-  text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
-}
-
-.status-active {
-  color: #00d2ff;
-  text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
-}
-
-.status-error {
-  color: #ff0000;
-  font-weight: bold;
-}
-
-/* --- NEW: Step Progress Bar --- */
-#step-progress {
-  display: flex;
-  gap: 4px;
-  width: 100%;
-  max-width: 300px;
-  margin-top: 10px;
-}
-
-.step-segment {
-  flex-grow: 1;
-  height: 6px;
-  background: #222;
-  /* Empty state */
-  border-radius: 2px;
-  transition: all 0.3s ease;
-}
-
-/* The blue active chunks */
-.step-segment.active {
-  background: var(--neon-blue);
-  box-shadow: 0 0 6px var(--neon-blue);
-}
-
-/* The green success flash */
-.step-segment.success {
-  background: var(--neon-green);
-  box-shadow: 0 0 8px var(--neon-green);
-}
-
-/* The red error/abort flash */
-.step-segment.error {
-  background: #ff0044;
-  box-shadow: 0 0 8px #ff0044;
-}
-
-/* ... Keep all your existing top CSS ... */
-
-/* Update The Big Black Log Box */
-#log-container {
-  width: 100%;
-  max-width: 800px;
-  background: #000;
-  border: 1px solid #222;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-}
-
-/* NEW: Flexbox for the header */
-.container-header {
-  font-size: 0.7rem;
-  color: #444;
-  margin-bottom: 10px;
-  border-bottom: 1px solid #111;
-  padding-bottom: 5px;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -268,7 +135,6 @@ header h1 {
   line-height: 1.6;
 }
 
-/* NEW: The Clear Button */
 #clear-btn {
   background: transparent;
   border: 1px solid #333;
@@ -315,7 +181,6 @@ header h1 {
   color: #000;
 }
 
-/* Abort Button Styling */
 #abort-btn {
   background: #ff0044;
   border: 1px solid #ff0044;
@@ -333,7 +198,6 @@ header h1 {
   box-shadow: 0 0 10px #ff0044;
 }
 
-/* Mission Report */
 #response-box {
   margin-top: 15px;
   width: 100%;
@@ -348,7 +212,6 @@ header h1 {
   display: none !important;
 }
 
-/* Dedicated Status Classes */
 .status-idle {
   color: #39ff14;
   text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
@@ -394,4 +257,39 @@ header h1 {
 .step-segment.error {
   background: #ff0044;
   box-shadow: 0 0 8px #ff0044;
+}
+
+/* --- NEW: THE THERMAL MELTDOWN ANIMATION --- */
+@keyframes thermalAlarm {
+  0% {
+    background-color: var(--bg-dark);
+  }
+
+  50% {
+    background-color: #aa0000;
+  }
+
+  75% {
+    background-color: #ffffff;
+  }
+
+  100% {
+    background-color: var(--bg-dark);
+  }
+}
+
+body.thermal-meltdown {
+  animation: thermalAlarm 0.8s infinite;
+}
+
+body.thermal-meltdown h1,
+body.thermal-meltdown #digital-clock {
+  color: #fff;
+  text-shadow: 0 0 15px #000;
+}
+
+body.thermal-meltdown .status-card {
+  background: rgba(0, 0, 0, 0.9);
+  /* Keep cards dark so you can still read them */
+  border-color: #ff0044;
 }
