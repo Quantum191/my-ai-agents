@@ -12,47 +12,50 @@
 
   <header>
     <h1>DEV-01 NODE MANAGEMENT</h1>
-    <p>SYSTEM STATUS: <span id="status-text">INITIALIZING...</span></p>
+    <p>AGENT STATUS: <span id="status-text">Idle</span></p>
   </header>
 
   <main id="system-status">
     <div class="status-card cpu">
-      <h3>CPU LOAD</h3>
+      <h3>CPU</h3>
       <div class="bar">
         <div class="fill"></div>
       </div>
     </div>
-
     <div class="status-card ram">
-      <h3>MEMORY USAGE</h3>
+      <h3>RAM</h3>
       <div class="bar">
         <div class="fill"></div>
       </div>
     </div>
-
     <div class="status-card network">
-      <h3>GPU UTILIZATION</h3>
+      <h3>GPU</h3>
       <div class="bar">
         <div class="fill"></div>
       </div>
     </div>
-
     <div class="status-card storage">
-      <h3>DISK CAPACITY</h3>
+      <h3>DISK</h3>
       <div class="bar">
         <div class="fill"></div>
       </div>
     </div>
   </main>
 
-  <section id="console-container">
-    <h3>AGENT_THOUGHT_STREAM</h3>
-    <div id="log-display"></div>
+  <section id="log-container">
+    <div class="container-header">AGENT_THOUGHT_STREAM</div>
+    <div id="log-display">
+    </div>
   </section>
 
   <section id="command-center">
     <input type="text" id="user-input" placeholder="Enter command for DEV-01..." autocomplete="off">
     <button id="send-btn">EXECUTE</button>
+  </section>
+
+  <section id="response-box" class="hidden">
+    <div class="response-header">MISSION_REPORT:</div>
+    <div id="response-content"></div>
   </section>
 
   <script src="app.js"></script>

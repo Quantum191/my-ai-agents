@@ -1,44 +1,62 @@
 import psutil
 import json
 import os
-import subprocess
 
 def get_system_stats():
-    """Fetches hardware stats AND the agent's current status."""
+    """
+    Bridges Agent telemetry and Hardware stats to the Web Dashboard.
+    Uses absolute paths to ensure reliability on Arch Linux.
+    """
+    # 1. PATH CONFIGURATION
+    ROOT = "/home/sean/my-ai-agents"
+    STATUS_FILE = os.path.join(ROOT, "memory", "status.txt")
+    LOG_FILE = os.path.join(ROOT, "memory", "agent.log")
+    TARGET_JSON = os.path.join(ROOT, "Website", "stats.json")
+
     try:
-        # 1. Hardware
+        # 2. FETCH HARDWARE DATA
         cpu = psutil.cpu_percent(interval=0.1)
         ram = psutil.virtual_memory().percent
+        storage = psutil.disk_usage('/').percent
         
-        # 2. Read Agent Status (The 'Step 1/15' part)
-        status_path = "/home/sean/my-ai-agents/memory/status.txt"
-        agent_status = "Idle" # Default
-        if os.path.exists(status_path):
-            with open(status_path, "r") as f:
-                agent_status = f.read().strip()
+        # 3. FETCH AGENT STATUS (Idle vs. Step X/10)
+        current_status = "Idle"
+        if os.path.exists(STATUS_FILE):
+            with open(STATUS_FILE, "r") as f:
+                content = f.read().strip()
+                if content:
+                    current_status = content
 
-        # 3. Read Logs
-        log_path = "/home/sean/my-ai-agents/memory/agent.log"
+        # 4. FETCH AGENT LOGS (The "Thought Stream")
+        # We grab the last 10 lines to keep the box populated but fast
         logs = []
-        if os.path.exists(log_path):
-            with open(log_path, "r") as f:
-                logs = f.readlines()[-5:] # type: ignore
+        if os.path.exists(LOG_FILE):
+            try:
+                with open(LOG_FILE, "r") as f:
+                    # Read all lines and take the final 10
+                    all_lines = f.readlines()
+                    logs = [line.strip() for line in all_lines[-10:]]
+            except Exception as log_error:
+                logs = [f"Error reading logs: {str(log_error)}"]
+        else:
+            logs = ["Waiting for agent activity..."]
 
-        stats_data = {
+        # 5. CONSTRUCT DATA PAYLOAD
+        # This dictionary must match the keys expected by Website/app.js
+        data = {
             "cpu": cpu,
             "ram": ram,
+            "status": current_status,
             "gpu": "N/A",
-            "storage": psutil.disk_usage('/').percent,
-            "status": agent_status, # <-- NEW: Sending status to the web
-            "logs": [line.strip() for line in logs]
+            "storage": storage,
+            "logs": logs  # The "New Addition"
         }
 
-        # 4. Save to Website
-        target_path = "/home/sean/my-ai-agents/Website/stats.json"
-        with open(target_path, "w") as f:
-            json.dump(stats_data, f)
+        # 6. WRITE TO DISK (Atomic update for the Web Server)
+        with open(TARGET_JSON, "w") as f:
+            json.dump(data, f)
             
-        return f"SUCCESS: Status is {agent_status}"
+        return f"SUCCESS: Status updated to '{current_status}'"
 
     except Exception as e:
-        return f"ERROR: {str(e)}"
+        return f"STATS ERROR: {str(e)}"

@@ -2,111 +2,114 @@
   --bg-dark: #050505;
   --card-bg: rgba(20, 20, 20, 0.9);
   --neon-blue: #00d2ff;
-  --neon-purple: #bc13fe;
   --neon-green: #39ff14;
-  --neon-orange: #ff9900;
   --text-main: #e0e0e0;
 }
 
 body {
   background-color: var(--bg-dark);
   color: var(--text-main);
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Segoe UI', monospace;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 40px;
+  padding: 20px;
   min-height: 100vh;
 }
 
 header {
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
 }
 
 header h1 {
-  letter-spacing: 4px;
-  font-size: 1.8rem;
+  letter-spacing: 3px;
   color: #fff;
 }
 
+/* Hardware Grid */
 #system-status {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 20px;
+  gap: 15px;
   width: 100%;
   max-width: 800px;
+  margin-bottom: 20px;
 }
 
 .status-card {
   background: var(--card-bg);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 15px;
 }
 
 .status-card h3 {
-  font-size: 0.8rem;
-  color: #888;
-  margin-bottom: 10px;
+  font-size: 0.7rem;
+  color: #777;
+  margin-bottom: 8px;
 }
 
 .bar {
   width: 100%;
-  height: 12px;
+  height: 8px;
   background: #000;
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
 }
 
 .fill {
   height: 100%;
   width: 0%;
-  transition: width 0.8s ease-in-out;
+  transition: width 0.5s ease;
 }
 
-/* Neon Glows */
 .cpu .fill {
   background: var(--neon-blue);
-  box-shadow: 0 0 10px var(--neon-blue);
+  box-shadow: 0 0 8px var(--neon-blue);
 }
 
 .ram .fill {
-  background: var(--neon-purple);
-  box-shadow: 0 0 10px var(--neon-purple);
+  background: #bc13fe;
 }
 
 .network .fill {
   background: var(--neon-green);
-  box-shadow: 0 0 10px var(--neon-green);
 }
 
 .storage .fill {
-  background: var(--neon-orange);
-  box-shadow: 0 0 10px var(--neon-orange);
+  background: #ff9900;
 }
 
-#console-container {
-  margin-top: 30px;
+/* The Big Black Log Box */
+#log-container {
   width: 100%;
   max-width: 800px;
   background: #000;
-  padding: 15px;
-  border-radius: 8px;
   border: 1px solid #222;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+.container-header {
+  font-size: 0.7rem;
+  color: #444;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #111;
+  padding-bottom: 5px;
 }
 
 #log-display {
-  height: 100px;
+  height: 150px;
+  overflow-y: auto;
   color: var(--neon-green);
-  font-family: 'Courier New', monospace;
-  font-size: 0.8rem;
-  overflow-y: hidden;
+  font-size: 0.85rem;
+  line-height: 1.6;
 }
 
-/* Command Center Styling */
+/* Command Center */
 #command-center {
-  margin-top: 20px;
   width: 100%;
   max-width: 800px;
   display: flex;
@@ -132,7 +135,17 @@ header h1 {
   cursor: pointer;
 }
 
-#send-btn:disabled {
-  background: #333;
-  cursor: not-allowed;
+/* Mission Report */
+#response-box {
+  margin-top: 15px;
+  width: 100%;
+  max-width: 800px;
+  padding: 15px;
+  background: rgba(0, 210, 255, 0.05);
+  border: 1px solid var(--neon-blue);
+  border-radius: 8px;
+}
+
+.hidden {
+  display: none;
 }

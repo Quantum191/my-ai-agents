@@ -1,1 +1,1 @@
-{"cpu": 9.0, "ram": 63.3, "gpu": "N/A", "storage": 15.1, "status": "Idle", "logs": ["2026-03-22 03:01:36,825 - INFO -  * Restarting with stat", "2026-03-22 03:02:48,256 - INFO -  * Restarting with stat", "2026-03-22 03:02:49,438 - INFO -  * Restarting with stat", "2026-03-22 03:03:41,689 - INFO -  * Restarting with stat", "2026-03-22 03:04:08,905 - INFO -  * Restarting with stat"]}
+{"cpu": 3.0, "ram": 63.9, "status": "Idle", "gpu": "N/A", "storage": 15.1, "logs": []}
