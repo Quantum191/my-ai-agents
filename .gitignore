@@ -1,0 +1,13 @@
+# Ignore the agent's brain and logs
+memory/
+*.db
+*.log
+
+# Ignore Python's internal baggage
+__pycache__/
+*.py[cod]
+venv/
+.env
+
+# Ignore OS-specific junk
+.DS_Store

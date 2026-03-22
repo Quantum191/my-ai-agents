@@ -3,11 +3,13 @@ import os
 import json
 import logging
 import re
+from datetime import datetime
 from memory.memory_manager import AgentMemory
 from tools.file_manager import read_project_file, list_project_files, write_project_file, run_project_code
 from tools.web_search import search_web
 from tools.git_manager import run_git_command, git_sync
 from tools.docker_manager import run_docker_command
+from tools.web_scraper import scrape_url  # <-- NEW IMPORT
 
 # --- Logging Setup ---
 AGENT_LOG_FILE = os.getenv("AGENT_LOG_FILE", "/home/sean/my-ai-agents/memory/agent.log")
@@ -46,6 +48,11 @@ class CoderAgent:
         step = 1
         last_obs = "None."
         action_history = [] 
+        session_id = datetime.now().strftime("%Y%m%d_%H%M%S")
+        
+        past_memories = self.memory.recall_recent_interactions(limit=3)
+        if not past_memories:
+            past_memories = "No prior tasks recorded in long-term memory."
 
         while step <= self.max_steps:
             self.set_status(f"Step {step}/{self.max_steps}...")
@@ -54,12 +61,14 @@ class CoderAgent:
             safe_files = raw_files[:500] + "...(truncated)" if len(raw_files) > 500 else raw_files
             recent_history = "\n".join(action_history[-5:]) if action_history else "No actions taken yet."
 
-            # --- FIX: Restored 'command' key and all available tools to the prompt ---
             system_msg = (
                 f"You are {self.name}. You must output JSON.\n"
-                f"Available tools: write, run, read, git, sync, docker, search, answer.\n"
+                # --- NEW TOOL ADDED HERE ---
+                f"Available tools: write, run, read, git, sync, docker, search, scrape, answer.\n"
                 f"Files in directory: {safe_files}\n"
                 "Format: {\"action\": \"tool_name\", \"command\": \"args\", \"filename\": \"name\", \"code\": \"content\", \"text\": \"msg\"}\n\n"
+                "--- PAST RECOLLECTIONS ---\n"
+                f"{past_memories}\n\n"
                 "CRITICAL RULES:\n"
                 "1. DO NOT repeat an action if it was already successful in the history.\n"
                 "2. If the user's task is fully complete based on the LAST OBSERVATION, you MUST use the 'answer' tool to finish."
@@ -69,7 +78,7 @@ class CoderAgent:
                 "model": self.model,
                 "messages": [
                     {"role": "system", "content": system_msg},
-                    {"role": "user", "content": f"TASK: {prompt}\n\nHISTORY OF PAST ACTIONS:\n{recent_history}\n\nLAST OBSERVATION: {last_obs}\n\nReply with your next JSON action."}
+                    {"role": "user", "content": f"TASK: {prompt}\n\nCURRENT LOOP HISTORY:\n{recent_history}\n\nLAST OBSERVATION: {last_obs}\n\nReply with your next JSON action."}
                 ],
                 "stream": False
             }
@@ -98,25 +107,33 @@ class CoderAgent:
 
                 if action == "answer":
                     final_text = data.get("text") or "Task completed."
+                    self.memory.save_interaction(prompt, final_text)
                     self.set_status("Idle")
-                    logger.info(f"Task completed successfully in {step} steps.")
+                    logger.info(f"Task completed successfully in {step} steps. Memory saved.")
                     return final_text
 
+                param_used = "None"
                 if action == "write":
                     code = data.get("code") or data.get("command")
                     clean_code = re.sub(r"```[a-zA-Z]*\n?|```", "", str(code)).strip()
                     last_obs = write_project_file(data.get("filename"), clean_code)
+                    param_used = data.get("filename")
                 elif action == "run":
-                    last_obs = run_project_code(data.get("command") or data.get("filename"))
-                elif action in ["read", "sync", "git", "docker", "search"]:
+                    param_used = data.get("command") or data.get("filename")
+                    last_obs = run_project_code(param_used)
+                
+                # --- ROUTING LOGIC UPDATED WITH SCRAPE ---
+                elif action in ["read", "sync", "git", "docker", "search", "scrape"]:
                     tool_map = {
                         "read": read_project_file, 
                         "sync": git_sync, 
                         "git": run_git_command, 
                         "docker": run_docker_command, 
-                        "search": search_web
+                        "search": search_web,
+                        "scrape": scrape_url
                     }
                     param = data.get("command") or data.get("filename") or data.get("query")
+                    param_used = str(param)
                     last_obs = tool_map[action](param) if param else tool_map[action]()
                 else:
                     last_obs = f"Unknown action: {action}"
@@ -124,6 +141,8 @@ class CoderAgent:
                 safe_result = str(last_obs)[:100].replace('\n', ' ')
                 action_history.append(f"Step {step}: used '{action}' -> Result: {safe_result}")
                 logger.info(f"Step {step} - Action: {action} - Result: {safe_result}")
+                
+                self.memory.save_tool_action(session_id, action, param_used, str(last_obs))
 
             except Exception as e:
                 last_obs = f"System Error: {str(e)}"
@@ -137,5 +156,5 @@ class CoderAgent:
         logger.warning(err_msg)
         return err_msg
 
-# Module interface instantiation
 my_agent = CoderAgent("Dev-01")
+
