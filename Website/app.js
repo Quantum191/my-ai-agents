@@ -1,6 +1,16 @@
-// --- STATE VARIABLES ---
 let commandHistory = [];
 let historyIndex = -1;
+let isFlashing = false;
+
+const stepContainer = document.getElementById('step-progress');
+if (stepContainer) {
+  for (let i = 1; i <= 15; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'step-segment';
+    seg.id = `seg-${i}`;
+    stepContainer.appendChild(seg);
+  }
+}
 
 function updateClock() {
   const clockEl = document.getElementById('digital-clock');
@@ -11,6 +21,24 @@ function updateClock() {
 
 setInterval(updateClock, 1000);
 updateClock();
+
+function flashSegments(stateClass) {
+  isFlashing = true;
+  for (let i = 1; i <= 15; i++) {
+    const seg = document.getElementById(`seg-${i}`);
+    if (seg) {
+      seg.classList.remove('active', 'success', 'error');
+      seg.classList.add(stateClass);
+    }
+  }
+  setTimeout(() => {
+    for (let i = 1; i <= 15; i++) {
+      const seg = document.getElementById(`seg-${i}`);
+      if (seg) seg.classList.remove(stateClass);
+    }
+    isFlashing = false;
+  }, 2000);
+}
 
 async function updateDashboard() {
   try {
@@ -25,6 +53,18 @@ async function updateDashboard() {
       if (data.status === "Idle") statusEl.classList.add('status-idle');
       else if (data.status.toLowerCase().includes("error") || data.status.toLowerCase().includes("fail")) statusEl.classList.add('status-error');
       else statusEl.classList.add('status-active');
+    }
+
+    if (!isFlashing) {
+      const stepMatch = data.status.match(/Step (\d+)\/15/);
+      let currentStep = stepMatch ? parseInt(stepMatch[1]) : 0;
+      for (let i = 1; i <= 15; i++) {
+        const seg = document.getElementById(`seg-${i}`);
+        if (seg) {
+          seg.classList.remove('active', 'success', 'error');
+          if (currentStep > 0 && i <= currentStep) seg.classList.add('active');
+        }
+      }
     }
 
     updateBar('.cpu', data.cpu, `CPU: ${Math.round(data.cpu)}%`);
@@ -64,10 +104,9 @@ async function sendCommand() {
   }
   historyIndex = commandHistory.length;
 
-  // UI Updates for Active State
   input.disabled = true;
   btn.disabled = true;
-  abortBtn.classList.remove('hidden'); // SHOW ABORT BUTTON
+  abortBtn.classList.remove('hidden');
   if (resBox) resBox.classList.add('hidden');
 
   try {
@@ -82,27 +121,30 @@ async function sendCommand() {
       resBox.classList.remove('hidden');
       if (result.response === "MISSION ABORTED BY USER.") {
         resContent.innerHTML = `<span style="color: #ff9900;">WARNING: ${result.response}</span>`;
+        flashSegments('error');
       } else if (result.error) {
         resContent.innerHTML = `<span style="color: #ff4444;">ERROR: ${result.error}</span>`;
+        flashSegments('error');
       } else {
         resContent.innerHTML = `<span style="color: #39ff14;">${result.response}</span>`;
+        flashSegments('success');
       }
     }
   } catch (e) {
     if (resBox && resContent) {
       resBox.classList.remove('hidden');
       resContent.innerHTML = `<span style="color: #ff4444;">CONNECTION ERROR.</span>`;
+      flashSegments('error');
     }
   } finally {
     input.value = "";
     input.disabled = false;
     btn.disabled = false;
-    abortBtn.classList.add('hidden'); // HIDE ABORT BUTTON
+    abortBtn.classList.add('hidden');
     input.focus();
   }
 }
 
-// NEW: Trigger the Abort Route
 async function triggerAbort() {
   try {
     await fetch('/abort', { method: 'POST' });
@@ -112,13 +154,34 @@ async function triggerAbort() {
       resBox.classList.remove('hidden');
       resContent.innerHTML = `<span style="color: #ff0044;">Sending Abort Signal... Waiting for current step to finish.</span>`;
     }
+  } catch (e) { }
+}
+
+// --- NEW: Trigger Screen Wipe ---
+async function triggerClear() {
+  try {
+    await fetch('/clear', { method: 'POST' });
+    // Visually wipe the UI instantly
+    const logDisplay = document.getElementById('log-display');
+    if (logDisplay) logDisplay.innerHTML = "";
+
+    const resBox = document.getElementById('response-box');
+    if (resBox) resBox.classList.add('hidden');
+
+    // Blank out the progress segments
+    for (let i = 1; i <= 15; i++) {
+      const seg = document.getElementById(`seg-${i}`);
+      if (seg) seg.classList.remove('active', 'success', 'error');
+    }
   } catch (e) {
-    console.error("Failed to send abort signal.");
+    console.error("Failed to clear logs.");
   }
 }
 
+// Event Listeners
 document.getElementById('send-btn').addEventListener('click', sendCommand);
 document.getElementById('abort-btn').addEventListener('click', triggerAbort);
+document.getElementById('clear-btn').addEventListener('click', triggerClear); // NEW
 
 document.getElementById('user-input').addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {

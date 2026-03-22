@@ -20,6 +20,10 @@ body {
 header {
   text-align: center;
   margin-bottom: 30px;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 
 header h1 {
@@ -28,7 +32,6 @@ header h1 {
   margin-bottom: 5px;
 }
 
-/* --- NEW: Clock Styling --- */
 #digital-clock {
   font-size: 2.2rem;
   color: var(--text-main);
@@ -119,7 +122,7 @@ header h1 {
   line-height: 1.6;
 }
 
-/* Update your existing #command-center elements */
+/* Command Center */
 #command-center {
   width: 100%;
   max-width: 800px;
@@ -147,7 +150,7 @@ header h1 {
   color: #000;
 }
 
-/* NEW: Abort Button Styling */
+/* Abort Button Styling */
 #abort-btn {
   background: #ff0044;
   border: 1px solid #ff0044;
@@ -165,9 +168,131 @@ header h1 {
   box-shadow: 0 0 10px #ff0044;
 }
 
-/* Ensure hidden overrides block */
+/* Mission Report */
+#response-box {
+  margin-top: 15px;
+  width: 100%;
+  max-width: 800px;
+  padding: 15px;
+  background: rgba(0, 210, 255, 0.05);
+  border: 1px solid var(--neon-blue);
+  border-radius: 8px;
+}
+
 .hidden {
   display: none !important;
+}
+
+/* Dedicated Status Classes */
+.status-idle {
+  color: #39ff14;
+  text-shadow: 0 0 5px rgba(57, 255, 20, 0.5);
+}
+
+.status-active {
+  color: #00d2ff;
+  text-shadow: 0 0 5px rgba(0, 210, 255, 0.5);
+}
+
+.status-error {
+  color: #ff0000;
+  font-weight: bold;
+}
+
+/* --- NEW: Step Progress Bar --- */
+#step-progress {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  max-width: 300px;
+  margin-top: 10px;
+}
+
+.step-segment {
+  flex-grow: 1;
+  height: 6px;
+  background: #222;
+  /* Empty state */
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+/* The blue active chunks */
+.step-segment.active {
+  background: var(--neon-blue);
+  box-shadow: 0 0 6px var(--neon-blue);
+}
+
+/* The green success flash */
+.step-segment.success {
+  background: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+}
+
+/* The red error/abort flash */
+.step-segment.error {
+  background: #ff0044;
+  box-shadow: 0 0 8px #ff0044;
+}
+
+/* ... Keep all your existing top CSS ... */
+
+/* Update The Big Black Log Box */
+#log-container {
+  width: 100%;
+  max-width: 800px;
+  background: #000;
+  border: 1px solid #222;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 20px;
+}
+
+/* NEW: Flexbox for the header */
+.container-header {
+  font-size: 0.7rem;
+  color: #444;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #111;
+  padding-bottom: 5px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#log-display {
+  height: 150px;
+  overflow-y: auto;
+  color: var(--neon-green);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+
+/* NEW: The Clear Button */
+#clear-btn {
+  background: transparent;
+  border: 1px solid #333;
+  color: #777;
+  font-size: 0.6rem;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+#clear-btn:hover {
+  background: #ff0044;
+  color: #fff;
+  border-color: #ff0044;
+  box-shadow: 0 0 5px #ff0044;
+}
+
+/* Command Center */
+#command-center {
+  width: 100%;
+  max-width: 800px;
+  display: flex;
+  gap: 10px;
 }
 
 #user-input {
@@ -187,6 +312,25 @@ header h1 {
   border-radius: 6px;
   font-weight: bold;
   cursor: pointer;
+  color: #000;
+}
+
+/* Abort Button Styling */
+#abort-btn {
+  background: #ff0044;
+  border: 1px solid #ff0044;
+  padding: 0 20px;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #fff;
+  text-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+  transition: all 0.2s;
+}
+
+#abort-btn:hover {
+  background: #cc0033;
+  box-shadow: 0 0 10px #ff0044;
 }
 
 /* Mission Report */
@@ -201,7 +345,7 @@ header h1 {
 }
 
 .hidden {
-  display: none;
+  display: none !important;
 }
 
 /* Dedicated Status Classes */
@@ -218,4 +362,36 @@ header h1 {
 .status-error {
   color: #ff0000;
   font-weight: bold;
+}
+
+/* Step Progress Bar */
+#step-progress {
+  display: flex;
+  gap: 4px;
+  width: 100%;
+  max-width: 300px;
+  margin-top: 10px;
+}
+
+.step-segment {
+  flex-grow: 1;
+  height: 6px;
+  background: #222;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.step-segment.active {
+  background: var(--neon-blue);
+  box-shadow: 0 0 6px var(--neon-blue);
+}
+
+.step-segment.success {
+  background: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+}
+
+.step-segment.error {
+  background: #ff0044;
+  box-shadow: 0 0 8px #ff0044;
 }

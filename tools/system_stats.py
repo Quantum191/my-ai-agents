@@ -22,23 +22,14 @@ def get_system_stats():
                 if content:
                     current_status = content
 
-        # Logs (With Noise Filter)
+        # Logs
         logs = []
         if os.path.exists(LOG_FILE):
             try:
                 with open(LOG_FILE, "r") as f:
                     all_lines = f.readlines()
-                    clean_lines = []
-                    
-                    for line in all_lines:
-                        # Skip empty lines and Flask HTTP spam
-                        if not line.strip(): continue
-                        if "HTTP/1.1" in line or "127.0.0.1" in line: continue
-                        
-                        clean_lines.append(line.strip())
-                        
-                    # Grab only the last 15 clean thoughts
-                    logs = clean_lines[-15:]
+                    # Keep the last 15 lines, ignore empty lines
+                    logs = [line.strip() for line in all_lines[-15:] if line.strip()]
             except Exception as e:
                 logs = [f"Error reading logs: {str(e)}"]
         else:

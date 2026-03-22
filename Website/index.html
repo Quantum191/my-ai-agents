@@ -14,6 +14,8 @@
     <h1>DEV-01 NODE MANAGEMENT</h1>
     <div id="digital-clock">00:00:00</div>
     <p>AGENT STATUS: <span id="status-text" class="status-idle">Idle</span></p>
+
+    <div id="step-progress"></div>
   </header>
 
   <main id="system-status">
@@ -44,7 +46,10 @@
   </main>
 
   <section id="log-container">
-    <div class="container-header">AGENT_THOUGHT_STREAM</div>
+    <div class="container-header">
+      <span>AGENT_THOUGHT_STREAM</span>
+      <button id="clear-btn">CLEAR</button>
+    </div>
     <div id="log-display"></div>
   </section>
 
