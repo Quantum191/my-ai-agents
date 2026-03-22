@@ -47,16 +47,18 @@ class CoderAgent:
     def ask_ai(self, prompt):
         step = 1
         last_obs = "None."
-        action_history = [] # THE SCRATCHPAD: Tracks what the AI has done so far
+        action_history = [] 
         
         self.set_status("Step 1/15: Thinking...")
         logger.info(f"--- NEW TASK RECEIVED: {prompt} ---")
         
         while step <= 15:
             logger.info(f"Step {step}: Analyzing environment...")
-            files = str(list_project_files())[:400]
             
-            # Format the scratchpad for the AI to read
+            # THE FIX: Safely grab only the first 15 files to prevent overwhelming the AI, 
+            # then convert to a string without chopping file extensions in half.
+            files = str(list_project_files()[:15])
+            
             history_text = "\n".join(action_history) if action_history else "No actions taken yet."
 
             system_msg = (
@@ -120,8 +122,6 @@ class CoderAgent:
                     last_obs = f"Unknown tool: {action}"
                 
                 logger.info(f"Step {step} Result: {str(last_obs)[:100]}")
-                
-                # Record the action and result into the scratchpad so the AI remembers it next loop
                 action_history.append(f"Used '{action}' -> Result: {str(last_obs)[:100]}")
                 
             except Exception as e:

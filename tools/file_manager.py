@@ -15,17 +15,6 @@ def read_project_file(filename):
     except Exception as e:
         return f"Error reading file: {str(e)}"
 
-def write_project_file(filename, content):
-    """Writes/Overwrites a file in the project directory."""
-    try:
-        path = os.path.join(BASE_DIR, filename)
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding='utf-8') as f:
-            f.write(content)
-        return f"SUCCESS: {filename} written to disk."
-    except Exception as e:
-        return f"Error writing file: {str(e)}"
-
 def list_project_files():
     """Lists all files in the project, excluding hidden ones and venv."""
     files_list = []
